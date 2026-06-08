@@ -1,0 +1,318 @@
+'use client'
+
+import { useState, useEffect, type FormEvent } from 'react'
+import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import AuthLayout from '@/features/auth/components/AuthLayout'
+import GoogleOAuthButton from '@/features/auth/components/GoogleOAuthButton'
+import { useLogin } from '@/features/auth/hooks/useLogin'
+import { publicClient, apiClient } from '@/lib/axios'
+import { useAuthStore } from '@/store/authStore'
+import { setRefreshTokenCookie } from '@/lib/auth-cookie'
+import type { User, Tenant } from '@/types/auth'
+import type { SSOTokenResponse } from '@/features/services/types'
+
+const loginSchema = z.object({
+  email: z.string().email('Email inválido'),
+  password: z.string().min(1, 'La contraseña es requerida'),
+})
+
+type LoginFormData = z.infer<typeof loginSchema>
+
+async function redirectViaSSO(service: string) {
+  const { data } = await apiClient.post<SSOTokenResponse>('/auth/sso/token/', { service })
+  window.location.href = data.redirect_url
+}
+
+function buildDesktopRedirectUrl(state: string): string {
+  const store = useAuthStore.getState()
+  const payload = btoa(
+    JSON.stringify({
+      access_token: store.accessToken,
+      refresh_token: localStorage.getItem('hub-refreshToken'),
+      user: store.user,
+      tenant: store.tenant,
+    }),
+  )
+  return `rbacdesktop://auth?payload=${encodeURIComponent(payload)}&state=${state}`
+}
+
+export default function LoginPageClient() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  const resetSuccess = searchParams.get('reset_success') === 'true'
+  const nextService = searchParams.get('next') // 'workspace' | 'vista' | null
+  const desktopSource = searchParams.get('source') === 'desktop'
+  const desktopState = searchParams.get('state') ?? ''
+
+  const { mutate: loginMutate, isPending, error, data: loginResult } = useLogin({
+    skipNavigate: desktopSource,
+  })
+  const [mfaToken, setMfaToken] = useState<string | null>(null)
+  const [mfaCode, setMfaCode] = useState('')
+  const [mfaError, setMfaError] = useState<string | null>(null)
+  const [mfaLoading, setMfaLoading] = useState(false)
+  const [desktopRedirecting, setDesktopRedirecting] = useState(false)
+  const [desktopDeepLinkUrl, setDesktopDeepLinkUrl] = useState<string | null>(null)
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors },
+  } = useForm<LoginFormData>({ resolver: zodResolver(loginSchema) })
+
+  const watchedEmail = watch('email', '')
+
+  useEffect(() => {
+    if (!loginResult) return
+    if ('mfaRequired' in loginResult) {
+      setMfaToken(loginResult.mfaToken)
+    } else if (desktopSource && desktopState) {
+      const url = buildDesktopRedirectUrl(desktopState)
+      setDesktopDeepLinkUrl(url)
+      setDesktopRedirecting(true)
+      window.location.href = url
+    } else if (nextService) {
+      redirectViaSSO(nextService)
+    }
+  }, [loginResult]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleMfaSubmit(e: FormEvent) {
+    e.preventDefault()
+    setMfaError(null)
+    setMfaLoading(true)
+    try {
+      const { data } = await publicClient.post<{
+        access_token: string
+        refresh_token: string
+        user: User
+        tenant: Tenant
+      }>('/auth/mfa/validate/', { mfa_token: mfaToken, code: mfaCode })
+
+      useAuthStore.getState().setUser(data.user)
+      useAuthStore.getState().setTenant(data.tenant)
+      useAuthStore.getState().setAccessToken(data.access_token)
+      localStorage.setItem('hub-refreshToken', data.refresh_token)
+      localStorage.setItem('hub-authUser', JSON.stringify(data.user))
+      localStorage.setItem('hub-authTenant', JSON.stringify(data.tenant))
+      setRefreshTokenCookie(data.refresh_token)
+
+      if (desktopSource && desktopState) {
+        const url = buildDesktopRedirectUrl(desktopState)
+        setDesktopDeepLinkUrl(url)
+        setDesktopRedirecting(true)
+        window.location.href = url
+      } else if (nextService) {
+        await redirectViaSSO(nextService)
+      } else {
+        router.push('/dashboard')
+      }
+    } catch {
+      setMfaError('Código MFA inválido. Inténtalo de nuevo.')
+    } finally {
+      setMfaLoading(false)
+    }
+  }
+
+  function onSubmit(formData: LoginFormData) {
+    loginMutate({ email: formData.email, password: formData.password })
+  }
+
+  const loginError = error as { response?: { data?: { non_field_errors?: string[] } } } | null
+  const isEmailNotVerified = loginError?.response?.data?.non_field_errors?.[0] === 'email_not_verified'
+
+  const errorMessage =
+    error && !isEmailNotVerified
+      ? 'Credenciales inválidas. Verifica tu email y contraseña.'
+      : null
+
+  if (desktopRedirecting) {
+    return (
+      <AuthLayout>
+        <div className="text-center py-8">
+          <div className="text-4xl mb-4">✅</div>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+            Sesión iniciada en tu app de escritorio
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 text-sm mb-6">
+            Si el sidebar no se actualizó automáticamente, haz clic en el botón:
+          </p>
+          {desktopDeepLinkUrl && (
+            <a
+              href={desktopDeepLinkUrl}
+              className="inline-block bg-primary-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-primary-700 transition-colors text-sm"
+            >
+              Abrir en el sidebar
+            </a>
+          )}
+          <p className="text-gray-400 dark:text-gray-500 text-xs mt-4">
+            Puedes cerrar esta pestaña una vez que el sidebar muestre tu perfil.
+          </p>
+        </div>
+      </AuthLayout>
+    )
+  }
+
+  if (mfaToken) {
+    return (
+      <AuthLayout>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+          Verificación MFA
+        </h1>
+        {desktopSource && (
+          <p className="text-xs text-blue-600 dark:text-blue-400 mb-3">
+            Autenticando desde tu app de escritorio
+          </p>
+        )}
+        <p className="text-gray-600 dark:text-gray-400 mb-6">
+          Ingresa el código de tu aplicación autenticadora.
+        </p>
+        <form onSubmit={handleMfaSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Código de verificación
+            </label>
+            <input
+              type="text"
+              maxLength={6}
+              value={mfaCode}
+              onChange={(e) => setMfaCode(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white text-center text-2xl tracking-widest"
+              placeholder="000000"
+            />
+            {mfaError && <p className="text-red-500 text-sm mt-1">{mfaError}</p>}
+          </div>
+          <button
+            type="submit"
+            disabled={mfaLoading || mfaCode.length !== 6}
+            className="w-full bg-primary-600 text-white py-2.5 rounded-lg font-semibold hover:bg-primary-700 disabled:opacity-50 transition-colors"
+          >
+            {mfaLoading ? 'Verificando...' : 'Verificar'}
+          </button>
+        </form>
+      </AuthLayout>
+    )
+  }
+
+  return (
+    <AuthLayout>
+      {resetSuccess && (
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3 mb-4 text-sm text-green-700 dark:text-green-300">
+          Contraseña restablecida correctamente. Inicia sesión con tu nueva contraseña.
+        </div>
+      )}
+      {desktopSource && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4 text-sm text-blue-700 dark:text-blue-300 flex items-center gap-2">
+          <span>🖥️</span>
+          <span>Iniciando sesión desde tu app de escritorio</span>
+        </div>
+      )}
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+        Iniciar sesión
+      </h1>
+      <p className="text-gray-600 dark:text-gray-400 mb-6">Accede a tu Hub de Servicios</p>
+
+      {!desktopSource && (
+        <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900 rounded-lg p-3 mb-6 text-sm">
+          <p className="font-medium text-blue-800 dark:text-blue-300">Demo</p>
+          <p className="text-blue-600 dark:text-blue-400">
+            Usa tus credenciales de tenant para acceder
+          </p>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Email
+          </label>
+          <input
+            type="email"
+            {...register('email')}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+            placeholder="tu@empresa.com"
+          />
+          {errors.email && (
+            <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+          )}
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Contraseña
+          </label>
+          <input
+            type="password"
+            {...register('password')}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+            placeholder="••••••••"
+          />
+          {errors.password && (
+            <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
+          )}
+        </div>
+        {errorMessage && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 rounded-lg p-3 text-sm text-red-600 dark:text-red-400">
+            {errorMessage}
+          </div>
+        )}
+        {isEmailNotVerified && (
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-sm text-amber-700 dark:text-amber-300 space-y-2">
+            <p>Debes verificar tu email antes de iniciar sesión. Revisa tu bandeja de entrada.</p>
+            <Link
+              href={`/verify-email?resend=true${watchedEmail ? `&email=${encodeURIComponent(watchedEmail)}` : ''}`}
+              className="font-medium underline underline-offset-2 hover:text-amber-900 dark:hover:text-amber-100"
+            >
+              Reenviar email de verificación
+            </Link>
+          </div>
+        )}
+        <button
+          type="submit"
+          disabled={isPending}
+          className="w-full bg-primary-600 text-white py-2.5 rounded-lg font-semibold hover:bg-primary-700 disabled:opacity-50 transition-colors"
+        >
+          {isPending ? 'Iniciando sesión...' : 'Iniciar sesión'}
+        </button>
+      </form>
+
+      {!desktopSource && (
+        <>
+          <div className="relative mt-4">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300 dark:border-gray-600" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white dark:bg-gray-800 text-gray-500">o</span>
+            </div>
+          </div>
+          <div className="mt-4">
+            <GoogleOAuthButton />
+          </div>
+        </>
+      )}
+
+      <div className="mt-4 text-center space-y-2 text-sm">
+        <Link
+          href="/forgot-password"
+          className="text-primary-600 hover:text-primary-700 block"
+        >
+          ¿Olvidaste tu contraseña?
+        </Link>
+        <p className="text-gray-600 dark:text-gray-400">
+          ¿No tienes cuenta?{' '}
+          <Link
+            href="/register"
+            className="text-primary-600 hover:text-primary-700 font-medium"
+          >
+            Regístrate gratis
+          </Link>
+        </p>
+      </div>
+    </AuthLayout>
+  )
+}

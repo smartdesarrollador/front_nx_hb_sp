@@ -1,0 +1,3 @@
+'use client'
+
+export { useActiveServices } from '@/features/dashboard/hooks/useActiveServices'
