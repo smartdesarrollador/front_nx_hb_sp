@@ -2,7 +2,8 @@ import axios from 'axios'
 import { useAuthStore } from '@/store/authStore'
 import { setRefreshTokenCookie, clearRefreshTokenCookie } from './auth-cookie'
 
-const BASE_URL = `${process.env.NEXT_PUBLIC_API_URL ?? ''}/api/v1`
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? ''
+const BASE_URL = `${API_BASE}/api/v1`
 
 /**
  * Cliente público (sin token). Para login, register, refresh, etc.

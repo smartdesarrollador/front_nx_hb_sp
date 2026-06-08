@@ -1,0 +1,41 @@
+# docker-compose.dokploy.yml — para Dokploy (Traefik)
+
+services:
+  nextjs:
+    build:
+      context: .
+      target: prod
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Hub Client Portal}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://digisider.com}
+        NEXT_PUBLIC_REFERRAL_BASE_URL: ${NEXT_PUBLIC_REFERRAL_BASE_URL:-}
+    restart: unless-stopped
+    environment:
+      NODE_OPTIONS: --max-old-space-size=256
+    networks:
+      - dokploy-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.4'
+          memory: 384M
+        reservations:
+          memory: 128M
+    labels:
+      - "traefik.enable=true"
+      # HTTPS router
+      - "traefik.http.routers.rbac-next-hub.rule=Host(`${HUB_DOMAIN}`)"
+      - "traefik.http.routers.rbac-next-hub.entrypoints=websecure"
+      - "traefik.http.routers.rbac-next-hub.service=rbac-next-hub"
+      # HTTP → HTTPS redirect
+      - "traefik.http.routers.rbac-next-hub-http.rule=Host(`${HUB_DOMAIN}`)"
+      - "traefik.http.routers.rbac-next-hub-http.entrypoints=web"
+      - "traefik.http.routers.rbac-next-hub-http.middlewares=redirect-to-https@file"
+      - "traefik.http.routers.rbac-next-hub-http.service=rbac-next-hub"
+      # Backend service (puerto 4000)
+      - "traefik.http.services.rbac-next-hub.loadbalancer.server.port=4000"
+
+networks:
+  dokploy-network:
+    external: true
