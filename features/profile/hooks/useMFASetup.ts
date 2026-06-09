@@ -11,7 +11,7 @@ export function useMFASetup() {
 
   return useMutation<MFASetupResponse>({
     mutationFn: async () => {
-      const res = await apiClient.post('/auth/mfa/enable/')
+      const res = await apiClient.post('/auth/mfa/enable')
       return res.data
     },
     onSuccess: () => {

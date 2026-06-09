@@ -13,7 +13,7 @@ export function useResetPassword() {
   const router = useRouter()
   return useMutation({
     mutationFn: ({ token, password }: ResetPasswordRequest) =>
-      publicClient.post('/auth/reset-password/', { token, password }),
+      publicClient.post('/auth/reset-password', { token, password }),
     onSuccess: () => router.push('/login?reset_success=true'),
   })
 }

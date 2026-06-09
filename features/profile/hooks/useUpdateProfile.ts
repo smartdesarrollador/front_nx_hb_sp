@@ -11,7 +11,7 @@ export function useUpdateProfile() {
 
   return useMutation({
     mutationFn: (data: ProfileUpdateRequest) =>
-      apiClient.patch('/auth/profile/', data),
+      apiClient.patch('/auth/profile', data),
     onSuccess: (res) => {
       if (user) setUser({ ...user, ...res.data })
     },

@@ -9,7 +9,7 @@ export function useMFADisable() {
   const user = useAuthStore((s) => s.user)
 
   return useMutation({
-    mutationFn: () => apiClient.post('/auth/mfa/disable/'),
+    mutationFn: () => apiClient.post('/auth/mfa/disable'),
     onSuccess: () => {
       if (user) setUser({ ...user, mfaEnabled: false })
     },

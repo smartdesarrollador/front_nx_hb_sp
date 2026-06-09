@@ -64,12 +64,11 @@ export const authHandlers = [
     }),
   ),
 
-  // Estos ya tienen trailing slash en los hooks y coinciden
-  http.post(`${API}/api/v1/auth/forgot-password/`, () => HttpResponse.json({ message: 'Email sent' })),
-  http.post(`${API}/api/v1/auth/verify-email/`, () =>
+  http.post(`${API}/api/v1/auth/forgot-password`, () => HttpResponse.json({ message: 'Email sent' })),
+  http.post(`${API}/api/v1/auth/verify-email`, () =>
     HttpResponse.json({ message: 'Email verified successfully.' }),
   ),
-  http.post(`${API}/api/v1/auth/resend-verification/`, () =>
+  http.post(`${API}/api/v1/auth/resend-verification`, () =>
     HttpResponse.json({ message: 'If your email is registered and unverified, a new link has been sent.' }),
   ),
 ]
