@@ -10,6 +10,7 @@ services:
         NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Hub Client Portal}
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://digisider.com}
         NEXT_PUBLIC_REFERRAL_BASE_URL: ${NEXT_PUBLIC_REFERRAL_BASE_URL:-}
+        NEXT_PUBLIC_TENANT_SUBDOMAIN: ${NEXT_PUBLIC_TENANT_SUBDOMAIN:-system}
     restart: unless-stopped
     environment:
       NODE_OPTIONS: --max-old-space-size=256
