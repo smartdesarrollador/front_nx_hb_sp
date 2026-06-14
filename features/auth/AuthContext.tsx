@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import { publicClient, apiClient } from '@/lib/axios'
 import { useAuthStore } from '@/store/authStore'
 import { setRefreshTokenCookie, clearRefreshTokenCookie } from '@/lib/auth-cookie'
-import type { User, Tenant } from '@/types/auth'
+import type { User, Tenant, RegisterResponse } from '@/types/auth'
 
 export interface RegisterRequest {
   name: string
@@ -20,7 +20,7 @@ interface AuthContextValue {
   isLoading: boolean
   login: (email: string, password: string) => Promise<LoginResult>
   logout: () => Promise<void>
-  register: (data: RegisterRequest) => Promise<void>
+  register: (data: RegisterRequest) => Promise<RegisterResponse>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -87,14 +87,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearRefreshTokenCookie()
   }
 
-  async function register(data: RegisterRequest): Promise<void> {
-    await publicClient.post('/auth/register', {
+  async function register(data: RegisterRequest): Promise<RegisterResponse> {
+    const { data: response } = await publicClient.post<RegisterResponse>('/auth/register', {
       name: data.name,
       email: data.email,
       password: data.password,
       organization_name: data.organization_name,
       plan: data.plan,
     })
+    return response
   }
 
   return (

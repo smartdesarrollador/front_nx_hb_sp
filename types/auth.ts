@@ -48,6 +48,15 @@ export interface RegisterRequest {
   plan: 'free' | 'starter' | 'professional'
 }
 
+export interface RegisterResponse {
+  user: { id: string; name: string; email: string }
+  tenant: { id: string; name: string; slug: string; subdomain: string }
+  message: string
+  requires_payment: boolean
+  payment_upload_token?: string
+  plan?: string
+}
+
 export interface ForgotPasswordRequest {
   email: string
 }

@@ -6,9 +6,10 @@ import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Check } from 'lucide-react'
+import { Check, Clock } from 'lucide-react'
 import AuthLayout from '@/features/auth/components/AuthLayout'
 import GoogleOAuthButton from '@/features/auth/components/GoogleOAuthButton'
+import YapePaymentStep from '@/features/auth/components/YapePaymentStep'
 import { useRegister } from '@/features/auth/hooks/useRegister'
 import { usePlans } from '@/features/subscription/hooks/usePlans'
 
@@ -30,32 +31,31 @@ const step2Schema = z.object({
 type Step1Data = z.infer<typeof step1Schema>
 type Step2Data = z.infer<typeof step2Schema>
 
-const STEP_LABELS = ['Cuenta', 'Empresa', 'Plan', '¡Listo!']
+const FREE_STEP_LABELS  = ['Cuenta', 'Empresa', 'Plan', '¡Listo!']
+const PAID_STEP_LABELS  = ['Cuenta', 'Empresa', 'Plan', 'Pago', '¡Listo!']
 
 export default function RegisterPageClient() {
-  const router = useRouter()
+  const router       = useRouter()
   const searchParams = useSearchParams()
   const preSelectedPlan = searchParams.get('plan') ?? 'free'
 
-  const [step, setStep] = useState(1)
-  const [selectedPlan, setSelectedPlan] = useState(preSelectedPlan)
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    organizationName: '',
-  })
+  const [step, setStep]                       = useState(1)
+  const [selectedPlan, setSelectedPlan]       = useState(preSelectedPlan)
+  const [requiresPayment, setRequiresPayment] = useState(false)
+  const [paymentUploadToken, setPaymentUploadToken] = useState<string | null>(null)
+  const [formData, setFormData] = useState({ email: '', password: '', organizationName: '' })
+
   const { mutateAsync: registerMutate, isPending } = useRegister()
   const { plans: allPlans } = usePlans()
   const registrationPlans = allPlans.filter((p) => p.id !== 'enterprise')
+
+  const STEP_LABELS = requiresPayment ? PAID_STEP_LABELS : FREE_STEP_LABELS
 
   const form1 = useForm<Step1Data>({ resolver: zodResolver(step1Schema) })
   const form2 = useForm<Step2Data>({ resolver: zodResolver(step2Schema) })
   const orgName = form2.watch('organizationName') ?? ''
   const subdomainPreview =
-    orgName
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9-]/g, '') || 'tu-empresa'
+    orgName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || 'tu-empresa'
 
   function handleStep1(data: Step1Data) {
     setFormData((prev) => ({ ...prev, email: data.email, password: data.password }))
@@ -68,14 +68,21 @@ export default function RegisterPageClient() {
   }
 
   async function handleStep3() {
-    await registerMutate({
+    const result = await registerMutate({
       name: formData.organizationName,
       email: formData.email,
       password: formData.password,
       organization_name: formData.organizationName,
       plan: selectedPlan,
     })
-    setStep(4)
+
+    if (result.requires_payment && result.payment_upload_token) {
+      setRequiresPayment(true)
+      setPaymentUploadToken(result.payment_upload_token)
+      setStep(4) // → YapePaymentStep
+    } else {
+      setStep(4) // → success (free plan)
+    }
   }
 
   return (
@@ -83,9 +90,9 @@ export default function RegisterPageClient() {
       {/* Stepper */}
       <div className="flex items-center justify-center mb-8">
         {STEP_LABELS.map((label, idx) => {
-          const num = idx + 1
+          const num       = idx + 1
           const isCompleted = step > num
-          const isActive = step === num
+          const isActive    = step === num
           return (
             <div key={label} className="flex items-center">
               <div className="flex flex-col items-center">
@@ -108,9 +115,7 @@ export default function RegisterPageClient() {
               </div>
               {idx < STEP_LABELS.length - 1 && (
                 <div
-                  className={`h-px w-8 mx-2 mb-5 ${
-                    step > num ? 'bg-primary-600' : 'bg-gray-300'
-                  }`}
+                  className={`h-px w-8 mx-2 mb-5 ${step > num ? 'bg-primary-600' : 'bg-gray-300'}`}
                 />
               )}
             </div>
@@ -118,7 +123,7 @@ export default function RegisterPageClient() {
         })}
       </div>
 
-      {/* Step 1 */}
+      {/* Step 1 — Account */}
       {step === 1 && (
         <form onSubmit={form1.handleSubmit(handleStep1)} className="space-y-4">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -183,17 +188,14 @@ export default function RegisterPageClient() {
           <GoogleOAuthButton text="Registrarse con Google" />
           <p className="text-center text-sm text-gray-600 dark:text-gray-400">
             ¿Ya tienes cuenta?{' '}
-            <Link
-              href="/login"
-              className="text-primary-600 hover:text-primary-700 font-medium"
-            >
+            <Link href="/login" className="text-primary-600 hover:text-primary-700 font-medium">
               Inicia sesión
             </Link>
           </p>
         </form>
       )}
 
-      {/* Step 2 */}
+      {/* Step 2 — Organization */}
       {step === 2 && (
         <form onSubmit={form2.handleSubmit(handleStep2)} className="space-y-4">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -217,7 +219,10 @@ export default function RegisterPageClient() {
           </div>
           <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 text-sm">
             <p className="text-gray-500 dark:text-gray-400 mb-1">Tu subdominio será:</p>
-            <p className="font-mono font-medium text-primary-600 dark:text-primary-400" data-testid="subdomain-preview">
+            <p
+              className="font-mono font-medium text-primary-600 dark:text-primary-400"
+              data-testid="subdomain-preview"
+            >
               {subdomainPreview}.hub.app
             </p>
           </div>
@@ -239,7 +244,7 @@ export default function RegisterPageClient() {
         </form>
       )}
 
-      {/* Step 3 */}
+      {/* Step 3 — Plan selection */}
       {step === 3 && (
         <div className="space-y-4">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -302,8 +307,17 @@ export default function RegisterPageClient() {
         </div>
       )}
 
-      {/* Step 4 */}
-      {step === 4 && (
+      {/* Step 4a — Yape payment (paid plans) */}
+      {step === 4 && requiresPayment && paymentUploadToken && (
+        <YapePaymentStep
+          paymentUploadToken={paymentUploadToken}
+          plan={selectedPlan}
+          onSuccess={() => setStep(5)}
+        />
+      )}
+
+      {/* Step 4b — Success (free plan) */}
+      {step === 4 && !requiresPayment && (
         <div className="text-center space-y-6">
           <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto">
             <Check className="h-8 w-8 text-green-600 dark:text-green-400" />
@@ -320,6 +334,38 @@ export default function RegisterPageClient() {
               <p>
                 Te enviamos un email a <strong>{formData.email}</strong> con un enlace para
                 verificar tu cuenta. Debes verificarlo antes de iniciar sesión.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => router.push('/login')}
+            className="w-full bg-primary-600 text-white py-2.5 rounded-lg font-semibold hover:bg-primary-700 transition-colors"
+          >
+            Ir al inicio de sesión
+          </button>
+        </div>
+      )}
+
+      {/* Step 5 — Payment pending review (paid plans) */}
+      {step === 5 && requiresPayment && (
+        <div className="text-center space-y-6">
+          <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto">
+            <Clock className="h-8 w-8 text-amber-600 dark:text-amber-400" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              ¡Comprobante enviado!
+            </h2>
+            <p className="text-gray-600 dark:text-gray-300 mb-4">
+              Estamos revisando tu pago manualmente. Te enviaremos un email a{' '}
+              <strong>{formData.email}</strong> en cuanto tu cuenta sea activada.
+            </p>
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-sm text-blue-700 dark:text-blue-300 text-left">
+              <p className="font-medium mb-1">Mientras tanto</p>
+              <p>
+                Verifica tu email haciendo clic en el enlace que te enviamos a{' '}
+                <strong>{formData.email}</strong>. Lo necesitarás para iniciar sesión una vez
+                que tu cuenta sea activada.
               </p>
             </div>
           </div>
