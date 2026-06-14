@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2, XCircle } from 'lucide-react'
-import { publicClient } from '@/lib/axios'
 import { useAuthStore } from '@/store/authStore'
 import { setRefreshTokenCookie } from '@/lib/auth-cookie'
 import type { User, Tenant } from '@/types/auth'
@@ -15,34 +14,49 @@ export default function GoogleCallbackClient() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const code = searchParams.get('code')
-    const state = searchParams.get('state')
-
-    if (!code) {
-      setError('No se recibió el código de autorización de Google.')
+    const errorParam = searchParams.get('error')
+    if (errorParam) {
+      const messages: Record<string, string> = {
+        invalid_state: 'La sesión expiró. Intenta de nuevo.',
+        token_exchange_failed: 'No se pudo conectar con Google. Intenta de nuevo.',
+        userinfo_failed: 'No se pudo obtener información de tu cuenta Google.',
+        email_not_verified: 'Tu cuenta de Google no tiene el email verificado.',
+        missing_email: 'Google no proporcionó un email. Intenta con otra cuenta.',
+        user_creation_failed: 'No se pudo crear tu cuenta. Intenta de nuevo.',
+        account_suspended: 'Tu cuenta está suspendida. Contacta al soporte.',
+        access_denied: 'Cancelaste el inicio de sesión con Google.',
+      }
+      setError(messages[errorParam] ?? 'Error al iniciar sesión con Google.')
       return
     }
 
-    publicClient
-      .post<{
-        access_token: string
-        refresh_token: string
-        user: User
-        tenant: Tenant
-      }>('/auth/google/callback/', { code, state })
-      .then(({ data }) => {
-        useAuthStore.getState().setUser(data.user)
-        useAuthStore.getState().setTenant(data.tenant)
-        useAuthStore.getState().setAccessToken(data.access_token)
-        localStorage.setItem('hub-refreshToken', data.refresh_token)
-        localStorage.setItem('hub-authUser', JSON.stringify(data.user))
-        localStorage.setItem('hub-authTenant', JSON.stringify(data.tenant))
-        setRefreshTokenCookie(data.refresh_token)
-        router.push('/dashboard')
-      })
-      .catch(() => {
-        setError('No se pudo completar el inicio de sesión con Google. Intenta de nuevo.')
-      })
+    // Backend already exchanged the code and sends tokens in query params
+    const accessToken = searchParams.get('access_token')
+    const refreshToken = searchParams.get('refresh_token')
+    const userB64 = searchParams.get('user')
+    const tenantB64 = searchParams.get('tenant')
+
+    if (!accessToken || !refreshToken || !userB64 || !tenantB64) {
+      setError('No se recibieron los datos de sesión. Intenta de nuevo.')
+      return
+    }
+
+    try {
+      const user = JSON.parse(atob(userB64)) as User
+      const tenant = JSON.parse(atob(tenantB64)) as Tenant
+
+      useAuthStore.getState().setUser(user)
+      useAuthStore.getState().setTenant(tenant)
+      useAuthStore.getState().setAccessToken(accessToken)
+      localStorage.setItem('hub-refreshToken', refreshToken)
+      localStorage.setItem('hub-authUser', JSON.stringify(user))
+      localStorage.setItem('hub-authTenant', JSON.stringify(tenant))
+      setRefreshTokenCookie(refreshToken)
+
+      router.push('/dashboard')
+    } catch {
+      setError('Error al procesar los datos de sesión. Intenta de nuevo.')
+    }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (error) {
