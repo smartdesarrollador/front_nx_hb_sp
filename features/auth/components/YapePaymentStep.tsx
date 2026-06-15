@@ -3,18 +3,13 @@
 import { useRef, useState } from 'react'
 import { Upload, X, AlertCircle, Smartphone } from 'lucide-react'
 import { useUploadYapeProof } from '@/features/auth/hooks/useUploadYapeProof'
-
-const YAPE_PHONE  = process.env.NEXT_PUBLIC_YAPE_PHONE  ?? '999 000 000'
-const YAPE_HOLDER = process.env.NEXT_PUBLIC_YAPE_HOLDER ?? 'Mi Empresa SAC'
+import { useYapeConfig } from '@/features/auth/hooks/useYapeConfig'
 
 const PLAN_PRICES_USD: Record<string, number> = {
   starter:      29,
   professional: 79,
   enterprise:   199,
 }
-
-// Approximate exchange rate for display only; the actual amount accepted is the USD price
-const PEN_RATE = 3.75
 
 interface Props {
   paymentUploadToken: string
@@ -28,10 +23,12 @@ export default function YapePaymentStep({ paymentUploadToken, plan, onSuccess }:
   const [dragOver, setDragOver] = useState(false)
   const inputRef                = useRef<HTMLInputElement>(null)
 
-  const amountUSD = PLAN_PRICES_USD[plan] ?? 0
-  const amountPEN = (amountUSD * PEN_RATE).toFixed(2)
-
+  const { data: yapeConfig, isLoading: configLoading } = useYapeConfig()
   const { mutateAsync, isPending, isError, error } = useUploadYapeProof()
+
+  const amountUSD = PLAN_PRICES_USD[plan] ?? 0
+  const rate      = parseFloat(yapeConfig?.exchange_rate ?? '3.75')
+  const amountPEN = (amountUSD * rate).toFixed(2)
 
   function handleFile(f: File) {
     if (!f.type.startsWith('image/')) return
@@ -65,6 +62,19 @@ export default function YapePaymentStep({ paymentUploadToken, plan, onSuccess }:
     onSuccess()
   }
 
+  // Yape disabled by admin
+  if (!configLoading && yapeConfig && !yapeConfig.is_enabled) {
+    return (
+      <div className="space-y-4">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Pago con Yape</h2>
+        <div className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 p-4 text-sm text-amber-800 dark:text-amber-300">
+          <p className="font-medium mb-1">Pago con Yape no disponible temporalmente</p>
+          <p>Por favor contáctanos para coordinar el pago de tu suscripción.</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-5">
       <div>
@@ -84,26 +94,42 @@ export default function YapePaymentStep({ paymentUploadToken, plan, onSuccess }:
             Instrucciones de pago
           </p>
         </div>
-        <ol className="pl-4 space-y-1.5 text-sm text-purple-800 dark:text-purple-300 list-decimal">
-          <li>Abre Yape en tu celular</li>
-          <li>
-            Envía{' '}
-            <span className="font-bold text-purple-900 dark:text-purple-100">
-              S/ {amountPEN}
-            </span>{' '}
-            (aprox. ${amountUSD} USD) al número:
-          </li>
-          <li className="font-mono font-bold text-base tracking-wider text-purple-900 dark:text-purple-100">
-            {YAPE_PHONE}
-          </li>
-          <li>
-            Titular:{' '}
-            <span className="font-semibold text-purple-900 dark:text-purple-100">
-              {YAPE_HOLDER}
-            </span>
-          </li>
-          <li>Toma screenshot del comprobante y súbelo abajo</li>
-        </ol>
+
+        {configLoading ? (
+          <div className="space-y-2 animate-pulse">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-4 bg-purple-200 dark:bg-purple-800 rounded w-3/4" />
+            ))}
+          </div>
+        ) : (
+          <ol className="pl-4 space-y-1.5 text-sm text-purple-800 dark:text-purple-300 list-decimal">
+            <li>Abre Yape en tu celular</li>
+            <li>
+              Envía{' '}
+              <span className="font-bold text-purple-900 dark:text-purple-100">
+                S/ {amountPEN}
+              </span>{' '}
+              (aprox. ${amountUSD} USD) al número:
+            </li>
+            <li className="font-mono font-bold text-base tracking-wider text-purple-900 dark:text-purple-100">
+              {yapeConfig?.phone || '—'}
+            </li>
+            <li>
+              Titular:{' '}
+              <span className="font-semibold text-purple-900 dark:text-purple-100">
+                {yapeConfig?.holder_name || '—'}
+              </span>
+            </li>
+            <li>Toma screenshot del comprobante y súbelo abajo</li>
+          </ol>
+        )}
+
+        {yapeConfig?.instructions_note && (
+          <p className="text-xs text-purple-700 dark:text-purple-300 pt-2 border-t border-purple-200 dark:border-purple-700">
+            {yapeConfig.instructions_note}
+          </p>
+        )}
+
         <p className="text-xs text-purple-600 dark:text-purple-400 pt-1 border-t border-purple-200 dark:border-purple-700">
           Plan seleccionado:{' '}
           <span className="font-semibold capitalize">{plan}</span> — ${amountUSD}/mes
