@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Check, Clock } from 'lucide-react'
+import { AlertCircle, Check, Clock } from 'lucide-react'
 import AuthLayout from '@/features/auth/components/AuthLayout'
 import GoogleOAuthButton from '@/features/auth/components/GoogleOAuthButton'
 import YapePaymentStep from '@/features/auth/components/YapePaymentStep'
@@ -16,7 +16,11 @@ import { usePlans } from '@/features/subscription/hooks/usePlans'
 const step1Schema = z
   .object({
     email: z.string().email('Email inválido'),
-    password: z.string().min(8, 'Mínimo 8 caracteres'),
+    password: z
+      .string()
+      .min(8, 'Mínimo 8 caracteres')
+      .regex(/[A-Z]/, 'Debe contener al menos una letra mayúscula')
+      .regex(/[0-9]/, 'Debe contener al menos un número'),
     confirmPassword: z.string(),
   })
   .refine((d) => d.password === d.confirmPassword, {
@@ -44,6 +48,7 @@ export default function RegisterPageClient() {
   const [requiresPayment, setRequiresPayment] = useState(false)
   const [paymentUploadToken, setPaymentUploadToken] = useState<string | null>(null)
   const [formData, setFormData] = useState({ email: '', password: '', organizationName: '' })
+  const [registerError, setRegisterError]     = useState<string | null>(null)
 
   const { mutateAsync: registerMutate, isPending } = useRegister()
   const { plans: allPlans } = usePlans()
@@ -68,20 +73,31 @@ export default function RegisterPageClient() {
   }
 
   async function handleStep3() {
-    const result = await registerMutate({
-      name: formData.organizationName,
-      email: formData.email,
-      password: formData.password,
-      organization_name: formData.organizationName,
-      plan: selectedPlan,
-    })
+    setRegisterError(null)
+    try {
+      const result = await registerMutate({
+        name: formData.organizationName,
+        email: formData.email,
+        password: formData.password,
+        organization_name: formData.organizationName,
+        plan: selectedPlan,
+      })
 
-    if (result.requires_payment && result.payment_upload_token) {
-      setRequiresPayment(true)
-      setPaymentUploadToken(result.payment_upload_token)
-      setStep(4) // → YapePaymentStep
-    } else {
-      setStep(4) // → success (free plan)
+      if (result.requires_payment && result.payment_upload_token) {
+        setRequiresPayment(true)
+        setPaymentUploadToken(result.payment_upload_token)
+        setStep(4)
+      } else {
+        setStep(4)
+      }
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { error?: { message?: string }; detail?: string } } })
+          ?.response?.data?.error?.message ??
+        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
+        (err as Error)?.message ??
+        'Error al crear la cuenta. Intenta de nuevo.'
+      setRegisterError(msg)
     }
   }
 
@@ -287,6 +303,12 @@ export default function RegisterPageClient() {
               </label>
             ))}
           </div>
+          {registerError && (
+            <div className="flex items-start gap-2 rounded-lg bg-red-50 dark:bg-red-900/20 p-3 text-sm text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800">
+              <AlertCircle className="mt-0.5 w-4 h-4 flex-shrink-0" />
+              <span>{registerError}</span>
+            </div>
+          )}
           <div className="flex gap-3">
             <button
               type="button"
