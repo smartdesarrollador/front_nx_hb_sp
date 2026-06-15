@@ -21,10 +21,10 @@ async function uploadYapeProof(data: UploadYapeProofRequest): Promise<UploadYape
   form.append('screenshot', data.screenshot)
   form.append('plan', data.plan)
   form.append('amount', String(data.amount))
-  // Do NOT set Content-Type — axios sets it automatically with multipart boundary for FormData
   const { data: response } = await publicClient.post<UploadYapeProofResponse>(
     '/auth/yape-payment-proof',
     form,
+    { headers: { 'Content-Type': undefined } },
   )
   return response
 }
