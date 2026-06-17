@@ -1,6 +1,6 @@
 'use client'
 
-import { Package, CreditCard, LifeBuoy, Users, ChevronRight, type LucideIcon } from 'lucide-react'
+import { Package, CreditCard, LifeBuoy, Users, ChevronRight, ArrowUpCircle, type LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 import type { DashboardSummary } from '../types'
@@ -14,6 +14,7 @@ interface SummaryCardProps {
   linkLabel: string
   color: string
   isLoading: boolean
+  onUpgrade?: () => void
 }
 
 const COLOR_CLASSES: Record<string, { bg: string; icon: string; link: string }> = {
@@ -48,6 +49,7 @@ function SummaryCard({
   linkLabel,
   color,
   isLoading,
+  onUpgrade,
 }: SummaryCardProps) {
   const colors = COLOR_CLASSES[color] ?? COLOR_CLASSES.blue
 
@@ -73,13 +75,24 @@ function SummaryCard({
         <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
         {sub && <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{sub}</p>}
       </div>
-      <Link
-        href={linkTo}
-        className={`flex items-center gap-1 text-sm font-medium ${colors.link} mt-auto`}
-      >
-        {linkLabel}
-        <ChevronRight className="h-3.5 w-3.5" />
-      </Link>
+      <div className="flex items-center justify-between mt-auto">
+        <Link
+          href={linkTo}
+          className={`flex items-center gap-1 text-sm font-medium ${colors.link}`}
+        >
+          {linkLabel}
+          <ChevronRight className="h-3.5 w-3.5" />
+        </Link>
+        {onUpgrade && (
+          <button
+            onClick={onUpgrade}
+            className="flex items-center gap-1 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 px-3 py-1 rounded-lg transition-colors"
+          >
+            <ArrowUpCircle className="h-3.5 w-3.5" />
+            Actualizar
+          </button>
+        )}
+      </div>
     </div>
   )
 }
@@ -87,9 +100,10 @@ function SummaryCard({
 interface SummaryCardsProps {
   summary: DashboardSummary
   canManageBilling: boolean
+  onUpgradePlan?: () => void
 }
 
-export function SummaryCards({ summary, canManageBilling }: SummaryCardsProps) {
+export function SummaryCards({ summary, canManageBilling, onUpgradePlan }: SummaryCardsProps) {
   const { t } = useTranslation('dashboard')
   const { subscription, support, referrals, isLoading } = summary
 
@@ -99,6 +113,7 @@ export function SummaryCards({ summary, canManageBilling }: SummaryCardsProps) {
     : undefined
 
   const billingValue = subscription ? `$${subscription.mrr}/mes` : '-'
+  const canUpgrade = subscription?.plan !== 'enterprise'
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -111,6 +126,7 @@ export function SummaryCards({ summary, canManageBilling }: SummaryCardsProps) {
         linkLabel={t('billingAction')}
         color="blue"
         isLoading={isLoading}
+        onUpgrade={canUpgrade && onUpgradePlan ? onUpgradePlan : undefined}
       />
       {canManageBilling && (
         <SummaryCard

@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useFeatureGate } from '@/hooks/useFeatureGate'
@@ -9,6 +10,8 @@ import { SummaryCards } from './components/SummaryCards'
 import { ActiveServicesList } from './components/ActiveServicesList'
 import { ServiceUpgradeCatalog } from './components/ServiceUpgradeCatalog'
 import { PlanUsageBanner } from './components/PlanUsageBanner'
+import UpgradePlanDrawer from '@/features/subscription/components/UpgradePlanDrawer'
+import type { PlanType } from '@/features/subscription/types'
 
 export default function DashboardPage() {
   const { t } = useTranslation('dashboard')
@@ -16,8 +19,10 @@ export default function DashboardPage() {
   const { getLimit } = useFeatureGate()
   const summary = useDashboardSummary()
   const { services, isLoading: servicesLoading } = useActiveServices()
+  const [showUpgradeDrawer, setShowUpgradeDrawer] = useState(false)
 
   const limitUsers = getLimit('users')
+  const currentPlan = (summary.subscription?.plan ?? 'free') as PlanType
 
   return (
     <div className="space-y-6">
@@ -28,7 +33,11 @@ export default function DashboardPage() {
 
       <PlanUsageBanner currentUsers={0} limitUsers={limitUsers} />
 
-      <SummaryCards summary={summary} canManageBilling={canManageBilling} />
+      <SummaryCards
+        summary={summary}
+        canManageBilling={canManageBilling}
+        onUpgradePlan={() => setShowUpgradeDrawer(true)}
+      />
 
       <section className="space-y-4">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('myServices')}</h2>
@@ -36,6 +45,13 @@ export default function DashboardPage() {
       </section>
 
       <ServiceUpgradeCatalog activeServiceIds={services.map((s) => s.id)} />
+
+      {showUpgradeDrawer && (
+        <UpgradePlanDrawer
+          currentPlan={currentPlan}
+          onClose={() => setShowUpgradeDrawer(false)}
+        />
+      )}
     </div>
   )
 }
