@@ -11,9 +11,11 @@ interface PlanCardProps {
   billingCycle: BillingCycle
   onSelect: (plan: PlanType) => void
   canUpgrade: boolean
+  onTrial?: (plan: PlanType) => void
+  canTrial?: boolean
 }
 
-function PlanCard({ plan, currentPlan, billingCycle, onSelect, canUpgrade }: PlanCardProps) {
+function PlanCard({ plan, currentPlan, billingCycle, onSelect, canUpgrade, onTrial, canTrial }: PlanCardProps) {
   const isCurrent = plan.id === currentPlan
   const canSelect = canUpgrade && isUpgrade(currentPlan, plan.id)
   const price =
@@ -74,6 +76,15 @@ function PlanCard({ plan, currentPlan, billingCycle, onSelect, canUpgrade }: Pla
       >
         {isCurrent ? 'Plan actual' : canSelect ? 'Actualizar plan' : 'Plan inferior'}
       </button>
+
+      {plan.id === 'professional' && canTrial && !isCurrent && onTrial && (
+        <button
+          onClick={() => onTrial('professional')}
+          className="w-full mt-2 py-1.5 px-4 rounded-lg text-sm font-medium border border-primary-600 text-primary-600 hover:bg-primary-50 transition-colors"
+        >
+          Probar 30 días gratis
+        </button>
+      )}
     </div>
   )
 }
@@ -85,6 +96,8 @@ interface Props {
   onBillingCycleChange: (cycle: BillingCycle) => void
   onUpgrade: (plan: PlanType) => void
   canUpgrade: boolean
+  onTrial?: (plan: PlanType) => void
+  canTrial?: boolean
 }
 
 export default function PlanComparisonGrid({
@@ -94,6 +107,8 @@ export default function PlanComparisonGrid({
   onBillingCycleChange,
   onUpgrade,
   canUpgrade,
+  onTrial,
+  canTrial,
 }: Props) {
   return (
     <div className="space-y-6">
@@ -110,6 +125,8 @@ export default function PlanComparisonGrid({
             billingCycle={billingCycle}
             onSelect={onUpgrade}
             canUpgrade={canUpgrade}
+            onTrial={onTrial}
+            canTrial={canTrial}
           />
         ))}
       </div>

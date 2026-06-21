@@ -19,6 +19,7 @@ export interface CurrentSubscription {
   current_period_end: string | null
   mrr: number
   usage: SubscriptionUsage
+  professional_trial_used?: boolean
 }
 
 export interface PlanFeature {

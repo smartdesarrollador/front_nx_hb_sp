@@ -46,6 +46,7 @@ export interface RegisterRequest {
   password: string
   organization_name: string
   plan: 'free' | 'starter' | 'professional'
+  is_trial?: boolean
 }
 
 export interface RegisterResponse {
@@ -55,6 +56,8 @@ export interface RegisterResponse {
   requires_payment: boolean
   payment_upload_token?: string
   plan?: string
+  trial_active?: boolean
+  trial_end?: string
 }
 
 export interface ForgotPasswordRequest {

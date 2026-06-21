@@ -6,6 +6,7 @@ import type { BillingCycle, PlanType } from './types'
 import { useCurrentSubscription } from './hooks/useCurrentSubscription'
 import { useUpgradeSubscription } from './hooks/useUpgradeSubscription'
 import { useCancelSubscription } from './hooks/useCancelSubscription'
+import { useStartTrial } from './hooks/useStartTrial'
 import { usePlans } from './hooks/usePlans'
 import CurrentPlanCard from './components/CurrentPlanCard'
 import UsageMeters from './components/UsageMeters'
@@ -20,7 +21,11 @@ export default function SubscriptionPage() {
   const { canManageBilling, canUpgradePlan } = usePermissions()
   const { mutate: upgradePlan, isPending: upgrading } = useUpgradeSubscription()
   const { mutate: cancelPlan, isPending: canceling } = useCancelSubscription()
+  const { mutate: startTrial } = useStartTrial()
   const { plans } = usePlans()
+
+  const canTrial =
+    subscription?.plan === 'free' && !subscription?.professional_trial_used && canManageBilling
 
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly')
   const [upgradeTarget, setUpgradeTarget] = useState<PlanType | null>(null)
@@ -83,6 +88,8 @@ export default function SubscriptionPage() {
             onBillingCycleChange={setBillingCycle}
             onUpgrade={setUpgradeTarget}
             canUpgrade={canUpgradePlan}
+            onTrial={(plan) => { if (plan === 'professional') startTrial() }}
+            canTrial={canTrial}
           />
         </div>
       )}

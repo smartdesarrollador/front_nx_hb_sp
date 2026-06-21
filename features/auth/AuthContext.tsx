@@ -12,6 +12,7 @@ export interface RegisterRequest {
   password: string
   organization_name: string
   plan: string
+  is_trial?: boolean
 }
 
 export type LoginResult = { ok: true } | { mfaRequired: true; mfaToken: string }
@@ -94,6 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password: data.password,
       organization_name: data.organization_name,
       plan: data.plan,
+      is_trial: data.is_trial ?? false,
     })
     return response
   }

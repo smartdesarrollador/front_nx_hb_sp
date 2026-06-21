@@ -14,6 +14,9 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { usePlans } from '@/features/subscription/hooks/usePlans'
+import { useLatestReleases } from '@/features/desktop/hooks/useLatestReleases'
+import { PlatformDownloadCard } from '@/features/desktop/components/PlatformDownloadCard'
+import type { ReleasePlatform } from '@/features/desktop/types'
 import LandingNavbar from '@/components/shared/LandingNavbar'
 
 function scrollTo(id: string) {
@@ -25,6 +28,7 @@ export default function LandingPageClient() {
   const { t } = useTranslation('landing')
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const { plans } = usePlans()
+  const { releases, isLoading: releasesLoading } = useLatestReleases()
 
   useEffect(() => {
     if (isAuthenticated) router.replace('/dashboard')
@@ -35,6 +39,7 @@ export default function LandingPageClient() {
   const navLinks = [
     { label: t('navFeatures'), onClick: () => scrollTo('features') },
     { label: t('navPricing'),  onClick: () => scrollTo('pricing')  },
+    { label: t('navDownload'), onClick: () => scrollTo('download') },
   ]
 
   const stats = [
@@ -263,7 +268,11 @@ export default function LandingPageClient() {
                 </div>
 
                 <button
-                  onClick={() => router.push(`/register?plan=${plan.id}`)}
+                  onClick={() =>
+                    plan.id === 'professional'
+                      ? router.push('/register?plan=professional&trial=true')
+                      : router.push(`/register?plan=${plan.id}`)
+                  }
                   className={`w-full py-3 rounded-xl font-semibold transition-all ${
                     plan.popular
                       ? 'bg-white text-primary-700 hover:bg-primary-50'
@@ -274,9 +283,40 @@ export default function LandingPageClient() {
                     ? t('freeCta')
                     : plan.id === 'starter'
                       ? t('starterCta')
-                      : t('proCta')}
+                      : t('proTrialCta')}
                 </button>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── DESKTOP DOWNLOAD ── */}
+      <section id="download" className="py-24 px-4 bg-white dark:bg-[#0F2D45]">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl font-bold text-[#0B2740] dark:text-[#EAF1F8] mb-4">
+              {t('downloadTitle')}
+            </h2>
+            <p className="text-[rgba(11,39,64,0.66)] dark:text-[rgba(234,241,248,0.72)] max-w-xl mx-auto mb-8">
+              {t('downloadSub')}
+            </p>
+            <button
+              onClick={() => router.push('/register?plan=professional&trial=true')}
+              className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-xl text-sm font-semibold transition-all shadow-lg shadow-primary-600/30 hover:-translate-y-0.5 mb-12"
+            >
+              {t('downloadTrialCta')}
+            </button>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            {(['windows', 'macos', 'linux'] as ReleasePlatform[]).map((platform) => (
+              <PlatformDownloadCard
+                key={platform}
+                platform={platform}
+                release={releases.find((r) => r.platform === platform)}
+                isLoading={releasesLoading}
+                featured={platform === 'windows'}
+              />
             ))}
           </div>
         </div>

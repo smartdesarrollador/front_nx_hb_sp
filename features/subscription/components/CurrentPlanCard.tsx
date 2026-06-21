@@ -62,6 +62,13 @@ export default function CurrentPlanCard({
         </div>
       )}
 
+      {subscription.status === 'trialing' && subscription.plan === 'professional' && (
+        <div className="bg-white/15 border border-white/30 rounded-lg p-3 text-white text-sm">
+          <p className="font-semibold">Prueba Professional activa</p>
+          <p className="text-white/80">Termina el {formatDate(subscription.trial_end)}</p>
+        </div>
+      )}
+
       <div className="flex items-start justify-between">
         <div>
           <p className="text-white/70 text-sm">Plan actual</p>

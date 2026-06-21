@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useForm } from 'react-hook-form'
@@ -42,9 +42,16 @@ export default function RegisterPageClient() {
   const router       = useRouter()
   const searchParams = useSearchParams()
   const preSelectedPlan = searchParams.get('plan') ?? 'free'
+  const isTrial         = searchParams.get('trial') === 'true'
 
   const [step, setStep]                       = useState(1)
   const [selectedPlan, setSelectedPlan]       = useState(preSelectedPlan)
+  const [trialActive, setTrialActive]         = useState(false)
+
+  useEffect(() => {
+    if (isTrial && preSelectedPlan === 'professional') setTrialActive(true)
+  }, [isTrial, preSelectedPlan])
+  const [resultTrialActive, setResultTrialActive] = useState(false)
   const [requiresPayment, setRequiresPayment] = useState(false)
   const [paymentUploadToken, setPaymentUploadToken] = useState<string | null>(null)
   const [formData, setFormData] = useState({ email: '', password: '', organizationName: '' })
@@ -81,9 +88,13 @@ export default function RegisterPageClient() {
         password: formData.password,
         organization_name: formData.organizationName,
         plan: selectedPlan,
+        is_trial: selectedPlan === 'professional' && trialActive,
       })
 
-      if (result.requires_payment && result.payment_upload_token) {
+      if (result.trial_active) {
+        setResultTrialActive(true)
+        setStep(4)
+      } else if (result.requires_payment && result.payment_upload_token) {
         setRequiresPayment(true)
         setPaymentUploadToken(result.payment_upload_token)
         setStep(4)
@@ -281,7 +292,10 @@ export default function RegisterPageClient() {
                   name="plan"
                   value={plan.id}
                   checked={selectedPlan === plan.id}
-                  onChange={() => setSelectedPlan(plan.id)}
+                  onChange={() => {
+                    setSelectedPlan(plan.id)
+                    if (plan.id !== 'professional') setTrialActive(false)
+                  }}
                   className="text-primary-600"
                 />
                 <div className="flex-1">
@@ -294,11 +308,20 @@ export default function RegisterPageClient() {
                         Popular
                       </span>
                     )}
+                    {plan.id === 'professional' && trialActive && (
+                      <span className="bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded-full font-medium">
+                        30 días gratis
+                      </span>
+                    )}
                   </div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">{plan.description}</p>
                 </div>
                 <span className="font-bold text-gray-900 dark:text-white">
-                  ${plan.priceMonthly}/mes
+                  {plan.id === 'professional' && trialActive ? (
+                    <span className="text-green-700">Gratis →</span>
+                  ) : (
+                    `$${plan.priceMonthly}/mes`
+                  )}
                 </span>
               </label>
             ))}
@@ -338,19 +361,25 @@ export default function RegisterPageClient() {
         />
       )}
 
-      {/* Step 4b — Success (free plan) */}
+      {/* Step 4b — Success (free plan or trial) */}
       {step === 4 && !requiresPayment && (
         <div className="text-center space-y-6">
           <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto">
             <Check className="h-8 w-8 text-green-600 dark:text-green-400" />
           </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+          <div className="space-y-3">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
               ¡Cuenta creada!
             </h2>
-            <p className="text-gray-600 dark:text-gray-300 mb-2">
+            <p className="text-gray-600 dark:text-gray-300">
               Tu organización <strong>{formData.organizationName}</strong> está lista.
             </p>
+            {resultTrialActive && (
+              <div className="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg p-3 text-sm text-primary-700 dark:text-primary-300 text-left">
+                <p className="font-semibold mb-1">¡Prueba Professional activa por 30 días!</p>
+                <p>Acceso completo al plan Professional sin costo durante 30 días.</p>
+              </div>
+            )}
             <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-sm text-amber-700 dark:text-amber-300 text-left">
               <p className="font-medium mb-1">Revisa tu bandeja de entrada</p>
               <p>
