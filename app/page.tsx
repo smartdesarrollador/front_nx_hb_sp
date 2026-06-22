@@ -1,6 +1,10 @@
 import LandingPageClient from '@/features/landing/LandingPageClient'
 import { createPageMetadata } from '@/lib/metadata'
 
+// Render en runtime para que el layout lea RECAPTCHA_SITE_KEY del entorno del
+// contenedor (Dokploy inyecta las env vars en runtime, no en build time).
+export const dynamic = 'force-dynamic'
+
 export const metadata = createPageMetadata(
   'Hub de Servicios — Plataforma SaaS todo en uno',
   'Plataforma todo-en-uno para equipos modernos: workspace colaborativo, presencia digital y app nativa, integrados y seguros.',
