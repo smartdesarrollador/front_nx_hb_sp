@@ -24,6 +24,7 @@ import { useLatestReleases } from '@/features/desktop/hooks/useLatestReleases'
 import { PlatformDownloadCard } from '@/features/desktop/components/PlatformDownloadCard'
 import type { ReleasePlatform } from '@/features/desktop/types'
 import LandingNavbar from '@/components/shared/LandingNavbar'
+import LandingFooter from '@/components/shared/LandingFooter'
 
 const LANDING_SERVICES = [
   {
@@ -406,20 +407,7 @@ export default function LandingPageClient() {
         </div>
       </section>
 
-      {/* ── FOOTER (on-dark) ── */}
-      <footer className="py-10 px-4 border-t border-[rgba(234,241,248,0.12)] bg-[#0B2740] dark:bg-[#071D2E]">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="bg-primary-600 text-white p-1 rounded-md">
-              <Building2 className="h-4 w-4" />
-            </div>
-            <span className="text-sm font-semibold text-[#EAF1F8]">Hub de Servicios</span>
-          </div>
-          <p className="text-xs text-[rgba(234,241,248,0.50)]">
-            © {new Date().getFullYear()} Hub de Servicios. {t('footerRights')}
-          </p>
-        </div>
-      </footer>
+      <LandingFooter />
     </div>
   )
 }
