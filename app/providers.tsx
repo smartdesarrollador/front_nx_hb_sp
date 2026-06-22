@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query'
-import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3'
 import { AuthProvider } from '@/features/auth/AuthContext'
 import '@/i18n/config'
 
@@ -23,10 +22,8 @@ function getQueryClient() {
 export function Providers({ children }: { children: React.ReactNode }) {
   const [qc] = useState(getQueryClient)
   return (
-    <GoogleReCaptchaProvider reCaptchaKey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ?? ''}>
-      <QueryClientProvider client={qc}>
-        <AuthProvider>{children}</AuthProvider>
-      </QueryClientProvider>
-    </GoogleReCaptchaProvider>
+    <QueryClientProvider client={qc}>
+      <AuthProvider>{children}</AuthProvider>
+    </QueryClientProvider>
   )
 }
