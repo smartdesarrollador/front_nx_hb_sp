@@ -14,6 +14,6 @@ export interface ContactFormData {
 export function useSubmitContact() {
   return useMutation({
     mutationFn: (data: ContactFormData) =>
-      publicClient.post('/public/contact', data),
+      publicClient.post('/public/contact/', data),
   })
 }
