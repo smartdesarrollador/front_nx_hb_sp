@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect } from 'react'
+import { useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -20,12 +20,6 @@ type FormData = z.infer<typeof schema>
 export default function ContactSection() {
   const { executeRecaptcha } = useGoogleReCaptcha()
   const { mutate, isPending, isSuccess, isError, reset: resetMutation } = useSubmitContact()
-
-  // [DEBUG reCAPTCHA] — eliminar tras diagnosticar
-  useEffect(() => {
-    console.log('[reCAPTCHA DEBUG] NEXT_PUBLIC_RECAPTCHA_SITE_KEY =', process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY)
-    console.log('[reCAPTCHA DEBUG] executeRecaptcha disponible =', typeof executeRecaptcha === 'function')
-  }, [executeRecaptcha])
   const {
     register,
     handleSubmit,

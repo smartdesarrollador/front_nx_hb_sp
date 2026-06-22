@@ -8,7 +8,7 @@ export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false)
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className="fixed bottom-28 right-6 z-50">
       {isOpen && <ChatPanel onClose={() => setIsOpen(false)} />}
 
       <button
