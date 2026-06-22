@@ -11,6 +11,12 @@ import {
   Check,
   ShieldCheck,
   Zap,
+  Megaphone,
+  LayoutTemplate,
+  Cpu,
+  Palette,
+  BrainCircuit,
+  ArrowRight,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { usePlans } from '@/features/subscription/hooks/usePlans'
@@ -18,6 +24,39 @@ import { useLatestReleases } from '@/features/desktop/hooks/useLatestReleases'
 import { PlatformDownloadCard } from '@/features/desktop/components/PlatformDownloadCard'
 import type { ReleasePlatform } from '@/features/desktop/types'
 import LandingNavbar from '@/components/shared/LandingNavbar'
+
+const LANDING_SERVICES = [
+  {
+    icon: Megaphone,
+    title: 'Marketing Digital',
+    desc: 'SEO, redes sociales, ads y estrategias de crecimiento para tu negocio en internet.',
+    href: '/marketing-digital',
+  },
+  {
+    icon: LayoutTemplate,
+    title: 'Páginas Web',
+    desc: 'Landing pages, sitios corporativos y tiendas online con diseño profesional.',
+    href: '/paginas-web',
+  },
+  {
+    icon: Cpu,
+    title: 'Automatizaciones',
+    desc: 'Workflows con n8n, chatbots de WhatsApp e integración de tus herramientas en piloto automático.',
+    href: '/automatizaciones',
+  },
+  {
+    icon: Palette,
+    title: 'Diseño Gráfico',
+    desc: 'Identidad de marca, redes sociales, UI, packaging y contenido para e-commerce.',
+    href: '/digital-design',
+  },
+  {
+    icon: BrainCircuit,
+    title: 'Capacitación en IA',
+    desc: 'Clases y talleres de Inteligencia Artificial para personas, equipos y empresas.',
+    href: '/aprende-inteligencia-artificial',
+  },
+]
 
 function scrollTo(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
@@ -37,9 +76,10 @@ export default function LandingPageClient() {
   const landingPlans = plans.filter((p) => p.id !== 'enterprise')
 
   const navLinks = [
-    { label: t('navFeatures'), onClick: () => scrollTo('features') },
-    { label: t('navPricing'),  onClick: () => scrollTo('pricing')  },
-    { label: t('navDownload'), onClick: () => scrollTo('download') },
+    { label: t('navFeatures'), onClick: () => scrollTo('features')  },
+    { label: 'Servicios',      onClick: () => scrollTo('servicios') },
+    { label: t('navPricing'),  onClick: () => scrollTo('pricing')   },
+    { label: t('navDownload'), onClick: () => scrollTo('download')  },
   ]
 
   const stats = [
@@ -166,6 +206,50 @@ export default function LandingPageClient() {
                   </div>
                   <h3 className="text-xl font-semibold text-[#0B2740] dark:text-[#EAF1F8] mb-3">{f.title}</h3>
                   <p className="text-[rgba(11,39,64,0.66)] dark:text-[rgba(234,241,248,0.72)] text-sm leading-relaxed">{f.desc}</p>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ── OTROS SERVICIOS ── */}
+      <section id="servicios" className="py-24 px-4 bg-[#DDE5EE] dark:bg-[#0F2D45]">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold text-[#0B2740] dark:text-[#EAF1F8] mb-4">
+              Otros servicios
+            </h2>
+            <p className="text-[rgba(11,39,64,0.66)] dark:text-[rgba(234,241,248,0.72)] max-w-xl mx-auto">
+              Además de la plataforma, ofrecemos servicios especializados para impulsar
+              tu negocio desde diferentes frentes.
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6">
+            {LANDING_SERVICES.map((service) => {
+              const Icon = service.icon
+              return (
+                <div
+                  key={service.title}
+                  className="group bg-[#EAF1F8] dark:bg-[#071D2E] border border-[rgba(11,39,64,0.10)] dark:border-[rgba(234,241,248,0.10)] rounded-2xl p-8 hover:border-primary-600/40 transition-all hover:-translate-y-1 flex flex-col"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-primary-600/10 dark:bg-primary-600/15 flex items-center justify-center mb-6 group-hover:bg-primary-600/20 transition-colors">
+                    <Icon className="h-6 w-6 text-primary-600 dark:text-primary-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-[#0B2740] dark:text-[#EAF1F8] mb-3">
+                    {service.title}
+                  </h3>
+                  <p className="text-[rgba(11,39,64,0.66)] dark:text-[rgba(234,241,248,0.72)] text-sm leading-relaxed flex-1">
+                    {service.desc}
+                  </p>
+                  <button
+                    onClick={() => router.push(service.href)}
+                    className="mt-6 self-start flex items-center gap-1.5 text-sm font-semibold text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors group-hover:gap-2.5"
+                  >
+                    Ver más
+                    <ArrowRight className="h-4 w-4 transition-all" />
+                  </button>
                 </div>
               )
             })}
