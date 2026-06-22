@@ -25,6 +25,7 @@ import { PlatformDownloadCard } from '@/features/desktop/components/PlatformDown
 import type { ReleasePlatform } from '@/features/desktop/types'
 import LandingNavbar from '@/components/shared/LandingNavbar'
 import LandingFooter from '@/components/shared/LandingFooter'
+import ContactSection from '@/features/contact/ContactSection'
 
 const LANDING_SERVICES = [
   {
@@ -406,6 +407,8 @@ export default function LandingPageClient() {
           </div>
         </div>
       </section>
+
+      <ContactSection />
 
       <LandingFooter />
     </div>
