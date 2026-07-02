@@ -1,4 +1,5 @@
 import LandingPageClient from '@/features/landing/LandingPageClient'
+import { HomeAnnouncementModal } from '@/features/announcements/components/HomeAnnouncementModal'
 import { createPageMetadata } from '@/lib/metadata'
 
 export const metadata = createPageMetadata(
@@ -35,6 +36,7 @@ export default function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <LandingPageClient />
+      <HomeAnnouncementModal />
     </>
   )
 }

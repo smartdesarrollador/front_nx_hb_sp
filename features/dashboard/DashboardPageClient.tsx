@@ -11,6 +11,7 @@ import { ActiveServicesList } from './components/ActiveServicesList'
 import { ServiceUpgradeCatalog } from './components/ServiceUpgradeCatalog'
 import { PlanUsageBanner } from './components/PlanUsageBanner'
 import UpgradePlanDrawer from '@/features/subscription/components/UpgradePlanDrawer'
+import { DashboardAnnouncementModal } from '@/features/announcements/components/DashboardAnnouncementModal'
 import type { PlanType } from '@/features/subscription/types'
 
 export default function DashboardPage() {
@@ -52,6 +53,8 @@ export default function DashboardPage() {
           onClose={() => setShowUpgradeDrawer(false)}
         />
       )}
+
+      <DashboardAnnouncementModal />
     </div>
   )
 }
