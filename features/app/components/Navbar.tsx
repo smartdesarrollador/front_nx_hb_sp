@@ -51,7 +51,7 @@ function Navbar() {
     setUserMenuOpen(false)
     setMobileMenuOpen(false)
     await logout()
-    router.push('/login')
+    router.push('/')
   }
 
   const initials = (user?.name ?? 'U').charAt(0).toUpperCase()
