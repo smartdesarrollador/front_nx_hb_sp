@@ -18,6 +18,8 @@ import BellBadge from '@/features/notifications/components/BellBadge'
 import { useAuthStore } from '@/store/authStore'
 import { useUiStore } from '@/store/uiStore'
 import { useAuthContext } from '@/features/auth/AuthContext'
+import { RoleBadge } from '@/features/team/components/RoleBadge'
+import { getPrimaryRole, type TeamMember } from '@/features/team/types'
 import LanguageSwitcher from './LanguageSwitcher'
 
 const NAV_LINKS = [
@@ -56,6 +58,7 @@ function Navbar() {
 
   const initials = (user?.name ?? 'U').charAt(0).toUpperCase()
   const plan = tenant?.plan ?? 'free'
+  const primaryRole = getPrimaryRole({ roles: user?.roles ?? [] } as TeamMember)
 
   const activeLinkClass =
     'border-b-2 border-primary-600 text-primary-700 dark:text-primary-400 pb-0.5'
@@ -123,6 +126,12 @@ function Navbar() {
 
         {/* Right: actions */}
         <div className="flex items-center gap-1.5">
+          {user && (
+            <span className="hidden sm:flex">
+              <RoleBadge role={primaryRole} />
+            </span>
+          )}
+
           <span className="hidden sm:flex items-center bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full px-2.5 py-1 text-xs font-medium">
             {plan.charAt(0).toUpperCase() + plan.slice(1)}
           </span>
@@ -183,6 +192,11 @@ function Navbar() {
                     <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                       {user?.email}
                     </p>
+                    {user && (
+                      <div className="mt-1.5">
+                        <RoleBadge role={primaryRole} />
+                      </div>
+                    )}
                   </div>
 
                   <Link
@@ -253,6 +267,11 @@ function Navbar() {
                   {user?.name}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">{user?.email}</p>
+                {user && (
+                  <div className="mt-1.5">
+                    <RoleBadge role={primaryRole} />
+                  </div>
+                )}
               </div>
 
               <button
