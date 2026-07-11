@@ -61,6 +61,7 @@ export default {
     starterCta: 'Empezar con Starter',
     proCta: 'Empezar con Professional',
     proTrialCta: 'Probar Professional gratis 30 días',
+    enterpriseCta: 'Empezar con Enterprise',
     navDownload: 'Descargar',
     downloadTitle: 'Descarga la App de Escritorio',
     downloadSub: 'App nativa para Windows, macOS y Linux. Acceso offline, notificaciones del sistema y mejor rendimiento.',

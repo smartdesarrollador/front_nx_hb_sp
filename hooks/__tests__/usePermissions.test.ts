@@ -79,6 +79,24 @@ describe('usePermissions', () => {
     expect(result.current.canUpgradePlan).toBe(false)
   })
 
+  it('plan starter → canUpgradePlan=true', () => {
+    act(() => {
+      useAuthStore.getState().setUser(makeUser())
+      useAuthStore.getState().setTenant(makeTenant('starter'))
+    })
+    const { result } = renderHook(() => usePermissions())
+    expect(result.current.canUpgradePlan).toBe(true)
+  })
+
+  it('plan professional → canUpgradePlan=true (puede subir a Enterprise)', () => {
+    act(() => {
+      useAuthStore.getState().setUser(makeUser())
+      useAuthStore.getState().setTenant(makeTenant('professional'))
+    })
+    const { result } = renderHook(() => usePermissions())
+    expect(result.current.canUpgradePlan).toBe(true)
+  })
+
   it('getPrimaryRole retorna el primer rol del usuario', () => {
     act(() => useAuthStore.getState().setUser(makeUser({ roles: ['Owner', 'Member'] })))
     const { result } = renderHook(() => usePermissions())

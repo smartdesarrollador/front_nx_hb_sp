@@ -1,13 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { act, waitFor } from '@testing-library/react'
-import { http, HttpResponse } from 'msw'
-import { server } from '@/test/server'
 import { renderHookWithProviders } from '@/test/utils'
 import { useCurrentSubscription } from '@/features/subscription/hooks/useCurrentSubscription'
 import { useCancelSubscription } from '@/features/subscription/hooks/useCancelSubscription'
 import { useAuthStore } from '@/store/authStore'
-
-const API = 'http://localhost:8000'
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() }),
@@ -36,11 +32,8 @@ describe('useCurrentSubscription', () => {
 
 describe('useCancelSubscription', () => {
   it('cancelación exitosa pone isSuccess en true', async () => {
-    server.use(
-      http.post(`${API}/api/v1/admin/subscriptions/cancel/`, () =>
-        HttpResponse.json({ message: 'Cancelled successfully' }),
-      ),
-    )
+    // Usa el handler global de subscription.handlers.ts (sin trailing slash) —
+    // el hook manda la URL sin slash, el rewrite de Next.js la agrega antes de llegar a Django.
     const { result } = renderHookWithProviders(() => useCancelSubscription())
     await act(async () => {
       result.current.mutate({ reason: 'Switching to another service' })

@@ -12,7 +12,7 @@ export function useCancelSubscription() {
 
   return useMutation({
     mutationFn: (data: CancelInput) =>
-      apiClient.post('/admin/subscriptions/cancel/', data),
+      apiClient.post('/admin/subscriptions/cancel', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['hub-subscription'] })
     },

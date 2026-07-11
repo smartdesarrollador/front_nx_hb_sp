@@ -59,7 +59,6 @@ export default function RegisterPageClient() {
 
   const { mutateAsync: registerMutate, isPending } = useRegister()
   const { plans: allPlans } = usePlans()
-  const registrationPlans = allPlans.filter((p) => p.id !== 'enterprise')
 
   const STEP_LABELS = requiresPayment ? PAID_STEP_LABELS : FREE_STEP_LABELS
 
@@ -278,7 +277,7 @@ export default function RegisterPageClient() {
             Elige tu plan
           </h2>
           <div className="space-y-3">
-            {registrationPlans.map((plan) => (
+            {allPlans.map((plan) => (
               <label
                 key={plan.id}
                 className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-colors ${

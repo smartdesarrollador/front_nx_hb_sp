@@ -1,6 +1,8 @@
 'use client'
 
 import { useAuthStore } from '@/store/authStore'
+import { PLAN_ORDER } from '@/features/subscription/plans-data'
+import type { PlanType } from '@/features/subscription/types'
 
 export interface UsePermissionsReturn {
   hasPermission: (codename: string) => boolean
@@ -35,7 +37,7 @@ export function usePermissions(): UsePermissionsReturn {
   const isOwner = hasRole('Owner')
   const isAdmin = isOwner || hasRole('OrgAdmin')
   const canManageBilling = isAdmin || hasPermission('subscriptions.view_billing')
-  const canUpgradePlan = plan === 'free' || plan === 'starter'
+  const canUpgradePlan = PLAN_ORDER.indexOf(plan as PlanType) < PLAN_ORDER.length - 1
 
   const getPrimaryRole = (): string => user?.roles[0] ?? 'Guest'
 

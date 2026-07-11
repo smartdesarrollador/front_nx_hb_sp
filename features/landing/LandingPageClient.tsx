@@ -62,8 +62,6 @@ export default function LandingPageClient() {
     if (isAuthenticated) router.replace('/dashboard')
   }, [isAuthenticated, router])
 
-  const landingPlans = plans.filter((p) => p.id !== 'enterprise')
-
   const navLinks = [
     { label: t('navFeatures'), onClick: () => scrollTo('features')  },
     { label: 'Servicios',      onClick: () => scrollTo('servicios') },
@@ -302,8 +300,8 @@ export default function LandingPageClient() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {landingPlans.map((plan) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
+            {plans.map((plan) => (
               <div
                 key={plan.id}
                 className={`relative rounded-2xl p-8 flex flex-col ${
@@ -371,7 +369,9 @@ export default function LandingPageClient() {
                     ? t('freeCta')
                     : plan.id === 'starter'
                       ? t('starterCta')
-                      : t('proTrialCta')}
+                      : plan.id === 'enterprise'
+                        ? t('enterpriseCta')
+                        : t('proTrialCta')}
                 </button>
               </div>
             ))}
