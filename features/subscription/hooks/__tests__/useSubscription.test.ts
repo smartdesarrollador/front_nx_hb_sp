@@ -4,7 +4,6 @@ import { http, HttpResponse } from 'msw'
 import { server } from '@/test/server'
 import { renderHookWithProviders } from '@/test/utils'
 import { useCurrentSubscription } from '@/features/subscription/hooks/useCurrentSubscription'
-import { useUpgradeSubscription } from '@/features/subscription/hooks/useUpgradeSubscription'
 import { useCancelSubscription } from '@/features/subscription/hooks/useCancelSubscription'
 import { useAuthStore } from '@/store/authStore'
 
@@ -32,21 +31,6 @@ describe('useCurrentSubscription', () => {
   it('isLoading pasa a false', async () => {
     const { result } = renderHookWithProviders(() => useCurrentSubscription())
     await waitFor(() => expect(result.current.isLoading).toBe(false), { timeout: 5000 })
-  })
-})
-
-describe('useUpgradeSubscription', () => {
-  it('upgrade exitoso pone isSuccess en true', async () => {
-    server.use(
-      http.post(`${API}/api/v1/admin/subscriptions/upgrade/`, () =>
-        HttpResponse.json({ message: 'Upgraded successfully' }),
-      ),
-    )
-    const { result } = renderHookWithProviders(() => useUpgradeSubscription())
-    await act(async () => {
-      result.current.mutate({ plan: 'enterprise', billing_cycle: 'monthly' })
-    })
-    await waitFor(() => expect(result.current.isSuccess).toBe(true), { timeout: 5000 })
   })
 })
 

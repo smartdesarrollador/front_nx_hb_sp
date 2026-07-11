@@ -11,6 +11,7 @@ import { ActiveServicesList } from './components/ActiveServicesList'
 import { ServiceUpgradeCatalog } from './components/ServiceUpgradeCatalog'
 import { PlanUsageBanner } from './components/PlanUsageBanner'
 import UpgradePlanDrawer from '@/features/subscription/components/UpgradePlanDrawer'
+import { usePlans } from '@/features/subscription/hooks/usePlans'
 import { DashboardAnnouncementModal } from '@/features/announcements/components/DashboardAnnouncementModal'
 import type { PlanType } from '@/features/subscription/types'
 
@@ -20,6 +21,7 @@ export default function DashboardPage() {
   const { getLimit } = useFeatureGate()
   const summary = useDashboardSummary()
   const { services, isLoading: servicesLoading } = useActiveServices()
+  const { plans } = usePlans()
   const [showUpgradeDrawer, setShowUpgradeDrawer] = useState(false)
 
   const limitUsers = getLimit('users')
@@ -49,6 +51,7 @@ export default function DashboardPage() {
 
       {showUpgradeDrawer && (
         <UpgradePlanDrawer
+          plans={plans}
           currentPlan={currentPlan}
           onClose={() => setShowUpgradeDrawer(false)}
         />

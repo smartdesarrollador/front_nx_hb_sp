@@ -2,7 +2,6 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { publicClient } from '@/lib/axios'
-import { PLANS as FALLBACK_PLANS } from '../plans-data'
 import type { PlanData } from '../types'
 
 interface ApiPlan {
@@ -36,5 +35,5 @@ export function usePlans() {
         .then((r) => r.data.plans.map(normalizePlan)),
     staleTime: 10 * 60 * 1000,
   })
-  return { plans: data ?? FALLBACK_PLANS, isLoading, isError }
+  return { plans: data ?? [], isLoading, isError }
 }

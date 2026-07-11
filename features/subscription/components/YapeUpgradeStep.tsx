@@ -5,18 +5,13 @@ import { Upload, X, AlertCircle, Smartphone } from 'lucide-react'
 import { useYapeUpgrade } from '../hooks/useYapeUpgrade'
 import { useYapeConfig } from '@/features/auth/hooks/useYapeConfig'
 
-const PLAN_PRICES_USD: Record<string, number> = {
-  starter: 29,
-  professional: 79,
-  enterprise: 199,
-}
-
 interface Props {
   plan: string
+  priceMonthly: number
   onSuccess: () => void
 }
 
-export default function YapeUpgradeStep({ plan, onSuccess }: Props) {
+export default function YapeUpgradeStep({ plan, priceMonthly, onSuccess }: Props) {
   const [file, setFile]         = useState<File | null>(null)
   const [preview, setPreview]   = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
@@ -25,7 +20,7 @@ export default function YapeUpgradeStep({ plan, onSuccess }: Props) {
   const { data: yapeConfig, isLoading: configLoading } = useYapeConfig()
   const { mutateAsync, isPending, isError, error } = useYapeUpgrade()
 
-  const amountUSD = PLAN_PRICES_USD[plan] ?? 0
+  const amountUSD = priceMonthly
   const rate      = parseFloat(yapeConfig?.exchange_rate ?? '3.75')
   const amountPEN = (amountUSD * rate).toFixed(2)
 

@@ -4,14 +4,13 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { BillingCycle, PlanType } from './types'
 import { useCurrentSubscription } from './hooks/useCurrentSubscription'
-import { useUpgradeSubscription } from './hooks/useUpgradeSubscription'
 import { useCancelSubscription } from './hooks/useCancelSubscription'
 import { useStartTrial } from './hooks/useStartTrial'
 import { usePlans } from './hooks/usePlans'
 import CurrentPlanCard from './components/CurrentPlanCard'
 import UsageMeters from './components/UsageMeters'
 import PlanComparisonGrid from './components/PlanComparisonGrid'
-import UpgradePlanModal from './components/UpgradePlanModal'
+import UpgradePlanDrawer from './components/UpgradePlanDrawer'
 import CancelSubscriptionModal from './components/CancelSubscriptionModal'
 import { usePermissions } from '@/hooks/usePermissions'
 
@@ -19,7 +18,6 @@ export default function SubscriptionPage() {
   const { t } = useTranslation('hub')
   const { subscription, isLoading } = useCurrentSubscription()
   const { canManageBilling, canUpgradePlan } = usePermissions()
-  const { mutate: upgradePlan, isPending: upgrading } = useUpgradeSubscription()
   const { mutate: cancelPlan, isPending: canceling } = useCancelSubscription()
   const { mutate: startTrial } = useStartTrial()
   const { plans } = usePlans()
@@ -30,16 +28,6 @@ export default function SubscriptionPage() {
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly')
   const [upgradeTarget, setUpgradeTarget] = useState<PlanType | null>(null)
   const [showCancelModal, setShowCancelModal] = useState(false)
-
-  const targetPlanData = upgradeTarget ? plans.find((p) => p.id === upgradeTarget) ?? null : null
-
-  const handleUpgradeConfirm = () => {
-    if (!upgradeTarget) return
-    upgradePlan(
-      { plan: upgradeTarget, billing_cycle: billingCycle },
-      { onSuccess: () => setUpgradeTarget(null) },
-    )
-  }
 
   const handleCancelConfirm = (reason?: string) => {
     cancelPlan(
@@ -94,14 +82,14 @@ export default function SubscriptionPage() {
         </div>
       )}
 
-      <UpgradePlanModal
-        targetPlan={targetPlanData}
-        billingCycle={billingCycle}
-        isOpen={upgradeTarget !== null}
-        onClose={() => setUpgradeTarget(null)}
-        onConfirm={handleUpgradeConfirm}
-        isPending={upgrading}
-      />
+      {upgradeTarget && (
+        <UpgradePlanDrawer
+          plans={plans}
+          currentPlan={subscription?.plan ?? 'free'}
+          initialPlan={upgradeTarget}
+          onClose={() => setUpgradeTarget(null)}
+        />
+      )}
       <CancelSubscriptionModal
         isOpen={showCancelModal}
         onClose={() => setShowCancelModal(false)}

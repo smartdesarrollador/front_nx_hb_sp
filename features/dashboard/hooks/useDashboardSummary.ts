@@ -13,22 +13,20 @@ interface SubscriptionResponse {
   subscription: SubscriptionSummary
 }
 
-const PLAN_PRICES: Record<string, number> = {
-  free: 0,
-  starter: 29,
-  professional: 79,
-  enterprise: 199,
-}
-
 export function useDashboardSummary(): DashboardSummary {
   const { data: subscription, isLoading: subLoading } = useQuery({
     queryKey: ['hub-subscription'],
-    queryFn: () =>
-      apiClient.get<SubscriptionResponse>('/admin/subscriptions/current').then((r) => ({
-        ...r.data.subscription,
-        plan_display: r.data.subscription.plan_display ?? r.data.subscription.plan,
-        mrr: PLAN_PRICES[r.data.subscription.plan] ?? 0,
-      })),
+    queryFn: async () => {
+      try {
+        const r = await apiClient.get<SubscriptionResponse>('/admin/subscriptions/current')
+        return {
+          ...r.data.subscription,
+          plan_display: r.data.subscription.plan_display ?? r.data.subscription.plan,
+        }
+      } catch {
+        return null
+      }
+    },
     staleTime: 60_000,
   })
 

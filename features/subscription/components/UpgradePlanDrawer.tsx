@@ -2,28 +2,26 @@
 
 import { useState } from 'react'
 import { X, ArrowLeft, Check } from 'lucide-react'
-import type { PlanType } from '../types'
-import { PLANS, isUpgrade } from '../plans-data'
+import type { PlanData, PlanType } from '../types'
+import { isUpgrade } from '../plans-data'
 import YapeUpgradeStep from './YapeUpgradeStep'
 
 interface Props {
+  plans: PlanData[]
   currentPlan: PlanType
+  /** Si se pasa, salta el paso de selección y abre directo en 'yape' para ese plan. */
+  initialPlan?: PlanType
   onClose: () => void
 }
 
 type Step = 'select' | 'yape' | 'success'
 
-const PLAN_PRICES_USD: Record<string, number> = {
-  starter: 29,
-  professional: 79,
-  enterprise: 199,
-}
+export default function UpgradePlanDrawer({ plans, currentPlan, initialPlan, onClose }: Props) {
+  const [step, setStep]               = useState<Step>(initialPlan ? 'yape' : 'select')
+  const [selectedPlan, setSelectedPlan] = useState<PlanType | null>(initialPlan ?? null)
 
-export default function UpgradePlanDrawer({ currentPlan, onClose }: Props) {
-  const [step, setStep]               = useState<Step>('select')
-  const [selectedPlan, setSelectedPlan] = useState<PlanType | null>(null)
-
-  const upgradablePlans = PLANS.filter((p) => isUpgrade(currentPlan, p.id))
+  const upgradablePlans = plans.filter((p) => isUpgrade(currentPlan, p.id))
+  const selectedPlanData = selectedPlan ? plans.find((p) => p.id === selectedPlan) ?? null : null
 
   function handleSelectPlan(plan: PlanType) {
     setSelectedPlan(plan)
@@ -111,7 +109,7 @@ export default function UpgradePlanDrawer({ currentPlan, onClose }: Props) {
                           )}
                         </div>
                         <span className="text-lg font-bold text-gray-900 dark:text-white">
-                          ${PLAN_PRICES_USD[plan.id] ?? plan.priceMonthly}
+                          ${plan.priceMonthly}
                           <span className="text-sm font-normal text-gray-500">/mes</span>
                         </span>
                       </div>
@@ -134,7 +132,11 @@ export default function UpgradePlanDrawer({ currentPlan, onClose }: Props) {
           )}
 
           {step === 'yape' && selectedPlan && (
-            <YapeUpgradeStep plan={selectedPlan} onSuccess={handleSuccess} />
+            <YapeUpgradeStep
+              plan={selectedPlan}
+              priceMonthly={selectedPlanData?.priceMonthly ?? 0}
+              onSuccess={handleSuccess}
+            />
           )}
 
           {step === 'success' && (
