@@ -7,7 +7,7 @@ export interface TicketComment {
   id: string
   message: string
   role: CommentRole
-  author_name: string
+  author: string
   created_at: string
 }
 

@@ -8,10 +8,10 @@ import TicketStatusBadge from './TicketStatusBadge'
 import TicketPriorityBadge from './TicketPriorityBadge'
 
 export const CATEGORY_LABELS: Record<TicketCategory, string> = {
-  billing: 'support.categoryBilling',
-  technical: 'support.categoryTechnical',
-  account: 'support.categoryAccount',
-  general: 'support.categoryGeneral',
+  billing: 'categoryBilling',
+  technical: 'categoryTechnical',
+  account: 'categoryAccount',
+  general: 'categoryGeneral',
 }
 
 interface Props {
@@ -22,7 +22,7 @@ interface Props {
 }
 
 export default function TicketList({ tickets, isLoading, selectedId, onSelect }: Props) {
-  const { t } = useTranslation('hub')
+  const { t } = useTranslation('support')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | TicketStatus>('all')
 
@@ -55,20 +55,20 @@ export default function TicketList({ tickets, isLoading, selectedId, onSelect }:
         <select
           value={statusFilter}
           onChange={e => setStatusFilter(e.target.value as 'all' | TicketStatus)}
-          aria-label={t('support.allStatuses')}
+          aria-label={t('allStatuses')}
           className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
         >
-          <option value="all">{t('support.allStatuses')}</option>
-          <option value="open">{t('support.statusOpen')}</option>
-          <option value="in_progress">{t('support.statusInProgress')}</option>
-          <option value="resolved">{t('support.statusResolved')}</option>
+          <option value="all">{t('allStatuses')}</option>
+          <option value="open">{t('statusOpen')}</option>
+          <option value="in_progress">{t('statusInProgress')}</option>
+          <option value="resolved">{t('statusResolved')}</option>
         </select>
       </div>
 
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-gray-400">
           <MessageCircle className="w-10 h-10 mb-2" />
-          <p className="text-sm">{t('support.noTickets')}</p>
+          <p className="text-sm">{t('noTickets')}</p>
         </div>
       ) : (
         <ul className="divide-y divide-gray-100">

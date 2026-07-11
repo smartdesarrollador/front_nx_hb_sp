@@ -15,7 +15,7 @@ interface Props {
 }
 
 export default function TicketDetailView({ ticketId, onClose }: Props) {
-  const { t } = useTranslation('hub')
+  const { t } = useTranslation('support')
   const { ticket, isLoading } = useTicketDetail(ticketId)
   const addComment = useAddComment()
   const [reply, setReply] = useState('')
@@ -64,25 +64,25 @@ export default function TicketDetailView({ ticketId, onClose }: Props) {
                 </span>
               </div>
               <p className="text-xs text-gray-400">
-                {t('support.openedOn')}: {new Date(ticket.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}
+                {t('openedOn')}: {new Date(ticket.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}
               </p>
               <p className="text-sm text-gray-700">{ticket.description}</p>
             </div>
 
             <div className="px-6 py-4 flex-1">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">{t('support.comments')}</h3>
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">{t('comments')}</h3>
               {ticket.comments.length === 0 ? (
-                <p className="text-sm text-gray-400">{t('support.noComments')}</p>
+                <p className="text-sm text-gray-400">{t('noComments')}</p>
               ) : (
                 <div className="space-y-3">
                   {ticket.comments.map(comment => (
                     <div key={comment.id} className={`flex gap-3 ${comment.role === 'client' ? 'flex-row-reverse' : ''}`}>
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${comment.role === 'agent' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
-                        {comment.author_name.charAt(0).toUpperCase()}
+                        {comment.author.charAt(0).toUpperCase()}
                       </div>
                       <div className={`flex-1 ${comment.role === 'client' ? 'items-end' : 'items-start'} flex flex-col`}>
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs font-medium text-gray-700">{comment.author_name}</span>
+                          <span className="text-xs font-medium text-gray-700">{comment.author}</span>
                           <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${comment.role === 'agent' ? 'bg-blue-50 text-blue-700' : 'bg-gray-50 text-gray-600'}`}>
                             {comment.role === 'agent' ? 'Soporte' : 'Tu'}
                           </span>
@@ -101,7 +101,7 @@ export default function TicketDetailView({ ticketId, onClose }: Props) {
               <textarea
                 value={reply}
                 onChange={e => setReply(e.target.value)}
-                placeholder={t('support.addComment')}
+                placeholder={t('addComment')}
                 rows={2}
                 className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
               />
@@ -110,7 +110,7 @@ export default function TicketDetailView({ ticketId, onClose }: Props) {
                 disabled={!reply.trim() || addComment.isPending}
                 className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50 self-end"
               >
-                {t('support.sendComment')}
+                {t('sendComment')}
               </button>
             </div>
           </div>

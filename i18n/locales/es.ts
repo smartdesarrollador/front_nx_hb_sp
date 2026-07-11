@@ -202,7 +202,9 @@ export default {
     priorityUrgente: 'Urgente',
     statusOpen: 'Abierto',
     statusInProgress: 'En progreso',
+    statusWaitingClient: 'En espera',
     statusResolved: 'Resuelto',
+    statusClosed: 'Cerrado',
     openedOn: 'Abierto el',
     helpTitle: 'Necesitas ayuda urgente?',
     helpSub: 'Nuestro equipo esta disponible por email en',
@@ -219,6 +221,8 @@ export default {
     noComments: 'Aun no hay comentarios.',
     serviceStatus: 'Estado de los servicios',
     serviceStatusOk: 'Todos los servicios operando con normalidad',
+    errorNoPermission: 'Tu rol actual no tiene permiso para crear tickets de soporte. Solo el Owner de la cuenta puede hacerlo.',
+    errorGeneric: 'No se pudo enviar el ticket. Intenta nuevamente en unos minutos.',
   },
   profile: {
     title: 'Mi perfil',

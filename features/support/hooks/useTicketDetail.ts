@@ -9,7 +9,7 @@ export function useTicketDetail(id: string | null) {
     queryKey: ['hub-support-ticket', id],
     queryFn: async () => {
       const res = await apiClient.get(`/support/tickets/${id}/`)
-      return res.data
+      return res.data.ticket
     },
     enabled: !!id,
     staleTime: 30_000,

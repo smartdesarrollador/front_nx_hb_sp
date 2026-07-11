@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { CheckCircle2, X } from 'lucide-react'
+import { isAxiosError } from 'axios'
+import { AlertCircle, CheckCircle2, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useCreateTicket } from '../hooks/useCreateTicket'
 import type { NewTicketRequest } from '../types'
@@ -24,8 +25,9 @@ interface Props {
 }
 
 export default function NewTicketModal({ open, onClose }: Props) {
-  const { t } = useTranslation('hub')
+  const { t } = useTranslation('support')
   const [step, setStep] = useState<1 | 2>(1)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const createTicket = useCreateTicket()
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
@@ -35,11 +37,13 @@ export default function NewTicketModal({ open, onClose }: Props) {
   useEffect(() => {
     if (!open) {
       setStep(1)
+      setSubmitError(null)
       reset()
     }
   }, [open, reset])
 
   const onSubmit = (data: FormData) => {
+    setSubmitError(null)
     createTicket.mutate(data as NewTicketRequest, {
       onSuccess: () => {
         setStep(2)
@@ -48,6 +52,13 @@ export default function NewTicketModal({ open, onClose }: Props) {
           reset()
           setStep(1)
         }, 1500)
+      },
+      onError: (error) => {
+        setSubmitError(
+          isAxiosError(error) && error.response?.status === 403
+            ? t('errorNoPermission')
+            : t('errorGeneric')
+        )
       },
     })
   }
@@ -64,62 +75,69 @@ export default function NewTicketModal({ open, onClose }: Props) {
 
         {step === 1 ? (
           <>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('support.modalTitle')}</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('modalTitle')}</h2>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('support.titleField')}</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('titleField')}</label>
                 <input
                   {...register('subject')}
-                  placeholder={t('support.titlePlaceholder')}
+                  placeholder={t('titlePlaceholder')}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
                 {errors.subject && <p className="text-xs text-red-500 mt-1">{errors.subject.message}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('support.categoryField')}</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('categoryField')}</label>
                 <select
                   {...register('category')}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
-                  <option value="">-- {t('support.categoryField')} --</option>
-                  <option value="billing">{t('support.categoryBilling')}</option>
-                  <option value="technical">{t('support.categoryTechnical')}</option>
-                  <option value="account">{t('support.categoryAccount')}</option>
-                  <option value="general">{t('support.categoryGeneral')}</option>
+                  <option value="">-- {t('categoryField')} --</option>
+                  <option value="billing">{t('categoryBilling')}</option>
+                  <option value="technical">{t('categoryTechnical')}</option>
+                  <option value="account">{t('categoryAccount')}</option>
+                  <option value="general">{t('categoryGeneral')}</option>
                 </select>
                 {errors.category && <p className="text-xs text-red-500 mt-1">{errors.category.message}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('support.priorityField')}</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('priorityField')}</label>
                 <select
                   {...register('priority')}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
-                  <option value="">-- {t('support.priorityField')} --</option>
-                  <option value="baja">{t('support.priorityBaja')}</option>
-                  <option value="media">{t('support.priorityMedia')}</option>
-                  <option value="alta">{t('support.priorityAlta')}</option>
-                  <option value="urgente">{t('support.priorityUrgente')}</option>
+                  <option value="">-- {t('priorityField')} --</option>
+                  <option value="baja">{t('priorityBaja')}</option>
+                  <option value="media">{t('priorityMedia')}</option>
+                  <option value="alta">{t('priorityAlta')}</option>
+                  <option value="urgente">{t('priorityUrgente')}</option>
                 </select>
                 {errors.priority && <p className="text-xs text-red-500 mt-1">{errors.priority.message}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('support.descField')}</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('descField')}</label>
                 <textarea
                   {...register('description')}
                   rows={4}
-                  placeholder={t('support.descPlaceholder')}
+                  placeholder={t('descPlaceholder')}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
                 />
                 {errors.description && <p className="text-xs text-red-500 mt-1">{errors.description.message}</p>}
               </div>
 
+              {submitError && (
+                <div className="flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+                  <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  <span>{submitError}</span>
+                </div>
+              )}
+
               <div className="flex gap-3 justify-end pt-2">
                 <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
-                  {t('support.cancel')}
+                  {t('cancel')}
                 </button>
                 <button
                   type="submit"
@@ -127,7 +145,7 @@ export default function NewTicketModal({ open, onClose }: Props) {
                   className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50 flex items-center gap-2"
                 >
                   {createTicket.isPending && <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                  {createTicket.isPending ? t('support.submitting') : t('support.submit')}
+                  {createTicket.isPending ? t('submitting') : t('submit')}
                 </button>
               </div>
             </form>
@@ -135,8 +153,8 @@ export default function NewTicketModal({ open, onClose }: Props) {
         ) : (
           <div className="text-center py-8">
             <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-3" />
-            <h2 className="text-lg font-semibold text-gray-900">{t('support.successTitle')}</h2>
-            <p className="text-sm text-gray-500 mt-1">{t('support.successSub')}</p>
+            <h2 className="text-lg font-semibold text-gray-900">{t('successTitle')}</h2>
+            <p className="text-sm text-gray-500 mt-1">{t('successSub')}</p>
           </div>
         )}
       </div>

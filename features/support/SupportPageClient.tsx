@@ -38,7 +38,7 @@ function KpiCard({ label, value, icon: Icon, color = 'default' }: KpiCardProps) 
 }
 
 export default function SupportPage() {
-  const { t } = useTranslation('hub')
+  const { t } = useTranslation('support')
   const { tickets, isLoading } = useMyTickets()
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null)
   const [showNewModal, setShowNewModal] = useState(false)
@@ -53,22 +53,22 @@ export default function SupportPage() {
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t('support.title')}</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{t('support.subtitle')}</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{t('subtitle')}</p>
         </div>
         <button
           onClick={() => setShowNewModal(true)}
           className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors"
         >
           <Plus className="w-4 h-4" />
-          {t('support.newTicket')}
+          {t('newTicket')}
         </button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <KpiCard label={t('support.myTickets')} value={total} icon={Ticket} />
-        <KpiCard label={t('support.open')} value={openCount} icon={CircleAlert} color="blue" />
-        <KpiCard label={t('support.inProgress')} value={inProgressCount} icon={Clock} color="yellow" />
+        <KpiCard label={t('myTickets')} value={total} icon={Ticket} />
+        <KpiCard label={t('open')} value={openCount} icon={CircleAlert} color="blue" />
+        <KpiCard label={t('inProgress')} value={inProgressCount} icon={Clock} color="yellow" />
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200">
