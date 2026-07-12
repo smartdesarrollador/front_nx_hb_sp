@@ -8,7 +8,7 @@ export function useInvoices() {
   const { data, isLoading } = useQuery({
     queryKey: ['hub-invoices'],
     queryFn: async () => {
-      const res = await apiClient.get('/admin/billing/invoices/')
+      const res = await apiClient.get('/admin/billing/invoices')
       return res.data.invoices as Invoice[]
     },
     staleTime: 300_000,

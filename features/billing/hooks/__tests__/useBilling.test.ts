@@ -30,10 +30,10 @@ beforeEach(() => {
   act(() => useAuthStore.getState().clearAuth())
   act(() => useAuthStore.getState().setAccessToken('test-token'))
   server.use(
-    http.get(`${API}/api/v1/admin/billing/payment-methods/`, () =>
+    http.get(`${API}/api/v1/admin/billing/payment-methods`, () =>
       HttpResponse.json({ payment_methods: [paymentMethodFixture] }),
     ),
-    http.get(`${API}/api/v1/admin/billing/invoices/`, () =>
+    http.get(`${API}/api/v1/admin/billing/invoices`, () =>
       HttpResponse.json({ invoices: [invoiceFixture] }),
     ),
   )

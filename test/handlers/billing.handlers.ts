@@ -23,21 +23,21 @@ const mockInvoice = {
 }
 
 export const billingHandlers = [
-  http.get(`${API}/api/v1/admin/billing/payment-methods/`, () =>
+  http.get(`${API}/api/v1/admin/billing/payment-methods`, () =>
     HttpResponse.json([mockPaymentMethod]),
   ),
 
-  http.post(`${API}/api/v1/admin/billing/payment-methods/`, () =>
+  http.post(`${API}/api/v1/admin/billing/payment-methods`, () =>
     HttpResponse.json(mockPaymentMethod, { status: 201 }),
   ),
 
-  http.patch(`${API}/api/v1/admin/billing/payment-methods/:id/`, () =>
+  http.patch(`${API}/api/v1/admin/billing/payment-methods/:id`, () =>
     HttpResponse.json(mockPaymentMethod),
   ),
 
-  http.delete(`${API}/api/v1/admin/billing/payment-methods/:id/`, () =>
+  http.delete(`${API}/api/v1/admin/billing/payment-methods/:id`, () =>
     new HttpResponse(null, { status: 204 }),
   ),
 
-  http.get(`${API}/api/v1/admin/billing/invoices/`, () => HttpResponse.json([mockInvoice])),
+  http.get(`${API}/api/v1/admin/billing/invoices`, () => HttpResponse.json([mockInvoice])),
 ]

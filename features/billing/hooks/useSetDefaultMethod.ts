@@ -7,7 +7,7 @@ export function useSetDefaultMethod() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (id: string) =>
-      apiClient.patch(`/admin/billing/payment-methods/${id}/`, { is_default: true }),
+      apiClient.patch(`/admin/billing/payment-methods/${id}`, { is_default: true }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['hub-payment-methods'] }),
   })
 }
