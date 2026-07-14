@@ -22,7 +22,7 @@ const AUTH_PATHS = [
 ]
 
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
+  const { pathname, searchParams } = request.nextUrl
   const refreshToken = request.cookies.get('hub-refreshToken')?.value
 
   const isApp  = APP_PATHS.some((p) => pathname.startsWith(p))
@@ -33,8 +33,19 @@ export function middleware(request: NextRequest) {
       new URL(`/login?next=${encodeURIComponent(pathname)}`, request.url),
     )
 
-  if (isAuth && refreshToken)
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+  if (isAuth && refreshToken) {
+    const dashboardUrl = new URL('/dashboard', request.url)
+    const source = searchParams.get('source')
+    const state = searchParams.get('state')
+    // Preserve the desktop deep-link handoff params so the dashboard can
+    // complete the SSO to the Tauri app using the already-active web session,
+    // instead of silently dropping them and stranding the desktop app.
+    if (pathname === '/login' && source === 'desktop' && state) {
+      dashboardUrl.searchParams.set('source', 'desktop')
+      dashboardUrl.searchParams.set('state', state)
+    }
+    return NextResponse.redirect(dashboardUrl)
+  }
 
   return NextResponse.next()
 }

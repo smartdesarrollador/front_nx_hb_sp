@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import DashboardPageClient from '@/features/dashboard/DashboardPageClient'
 
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 }
 
 export default function DashboardPage() {
-  return <DashboardPageClient />
+  return (
+    <Suspense fallback={<div className="min-h-screen" />}>
+      <DashboardPageClient />
+    </Suspense>
+  )
 }

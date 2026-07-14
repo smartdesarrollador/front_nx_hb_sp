@@ -12,6 +12,7 @@ import { useLogin } from '@/features/auth/hooks/useLogin'
 import { publicClient, apiClient } from '@/lib/axios'
 import { useAuthStore } from '@/store/authStore'
 import { setRefreshTokenCookie } from '@/lib/auth-cookie'
+import { buildDesktopDeepLinkUrl } from '@/features/auth/utils/buildDesktopDeepLinkUrl'
 import type { User, Tenant } from '@/types/auth'
 import type { SSOTokenResponse } from '@/features/services/types'
 
@@ -25,19 +26,6 @@ type LoginFormData = z.infer<typeof loginSchema>
 async function redirectViaSSO(service: string) {
   const { data } = await apiClient.post<SSOTokenResponse>('/auth/sso/token/', { service })
   window.location.href = data.redirect_url
-}
-
-function buildDesktopRedirectUrl(state: string): string {
-  const store = useAuthStore.getState()
-  const payload = btoa(
-    JSON.stringify({
-      access_token: store.accessToken,
-      refresh_token: localStorage.getItem('hub-refreshToken'),
-      user: store.user,
-      tenant: store.tenant,
-    }),
-  )
-  return `rbacdesktop://auth?payload=${encodeURIComponent(payload)}&state=${state}`
 }
 
 export default function LoginPageClient() {
@@ -73,7 +61,7 @@ export default function LoginPageClient() {
     if ('mfaRequired' in loginResult) {
       setMfaToken(loginResult.mfaToken)
     } else if (desktopSource && desktopState) {
-      const url = buildDesktopRedirectUrl(desktopState)
+      const url = buildDesktopDeepLinkUrl(desktopState)
       setDesktopDeepLinkUrl(url)
       setDesktopRedirecting(true)
       window.location.href = url
@@ -103,7 +91,7 @@ export default function LoginPageClient() {
       setRefreshTokenCookie(data.refresh_token)
 
       if (desktopSource && desktopState) {
-        const url = buildDesktopRedirectUrl(desktopState)
+        const url = buildDesktopDeepLinkUrl(desktopState)
         setDesktopDeepLinkUrl(url)
         setDesktopRedirecting(true)
         window.location.href = url
