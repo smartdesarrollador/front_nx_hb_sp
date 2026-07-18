@@ -179,10 +179,16 @@ export default function LandingFooter() {
 
       {/* ── BOTTOM BAR ── */}
       <div className="border-t border-[rgba(234,241,248,0.08)] px-4 py-6">
-        <div className="max-w-7xl mx-auto">
-          <p className="text-xs text-[rgba(234,241,248,0.40)] text-center">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p className="text-xs text-[rgba(234,241,248,0.40)] text-center sm:text-left">
             © {new Date().getFullYear()} Hub de Servicios. Todos los derechos reservados.
           </p>
+          <Link
+            href="/preguntas-frecuentes"
+            className="text-xs text-[rgba(234,241,248,0.40)] hover:text-primary-400 transition-colors"
+          >
+            Preguntas Frecuentes
+          </Link>
         </div>
       </div>
     </footer>
