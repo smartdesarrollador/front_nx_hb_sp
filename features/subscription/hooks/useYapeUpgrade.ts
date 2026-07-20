@@ -6,7 +6,7 @@ import { apiClient } from '@/lib/axios'
 interface YapeUpgradeRequest {
   plan: string
   screenshot: File
-  amount: number
+  promo_code?: string
 }
 
 interface YapeUpgradeResponse {
@@ -14,11 +14,15 @@ interface YapeUpgradeResponse {
   proof_id: string
 }
 
+// El monto NO se envía: el backend lo calcula siempre en servidor
+// (precio del plan menos el descuento del cupón, si lo hay).
 async function submitYapeUpgrade(data: YapeUpgradeRequest): Promise<YapeUpgradeResponse> {
   const form = new FormData()
   form.append('plan', data.plan)
   form.append('screenshot', data.screenshot)
-  form.append('amount', String(data.amount))
+  if (data.promo_code) {
+    form.append('promo_code', data.promo_code)
+  }
   const { data: response } = await apiClient.post<YapeUpgradeResponse>(
     '/admin/subscriptions/yape-upgrade',
     form,

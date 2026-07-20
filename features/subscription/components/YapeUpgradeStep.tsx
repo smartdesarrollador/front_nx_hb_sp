@@ -1,14 +1,24 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { Upload, X, AlertCircle, Smartphone } from 'lucide-react'
+import { Upload, X, AlertCircle, Smartphone, Tag, Loader2 } from 'lucide-react'
 import { useYapeUpgrade } from '../hooks/useYapeUpgrade'
 import { useYapeConfig } from '@/features/auth/hooks/useYapeConfig'
+import {
+  PROMO_REASON_MESSAGES,
+  useValidatePromotion,
+  type PromoReason,
+  type PromoValidationResult,
+} from '@/features/auth/hooks/useValidatePromotion'
 
 interface Props {
   plan: string
   priceMonthly: number
   onSuccess: () => void
+}
+
+function promoMessage(reason: string | undefined): string {
+  return PROMO_REASON_MESSAGES[reason as PromoReason] ?? 'El código no es válido.'
 }
 
 export default function YapeUpgradeStep({ plan, priceMonthly, onSuccess }: Props) {
@@ -17,12 +27,20 @@ export default function YapeUpgradeStep({ plan, priceMonthly, onSuccess }: Props
   const [dragOver, setDragOver] = useState(false)
   const inputRef                = useRef<HTMLInputElement>(null)
 
+  const [showPromo, setShowPromo]   = useState(false)
+  const [promoInput, setPromoInput] = useState('')
+  const [applied, setApplied]       = useState<PromoValidationResult | null>(null)
+  const [promoError, setPromoError] = useState<string | null>(null)
+
   const { data: yapeConfig, isLoading: configLoading } = useYapeConfig()
   const { mutateAsync, isPending, isError, error } = useYapeUpgrade()
+  const validatePromo = useValidatePromotion()
 
-  const amountUSD = priceMonthly
   const rate      = parseFloat(yapeConfig?.exchange_rate ?? '3.75')
-  const amountPEN = (amountUSD * rate).toFixed(2)
+  const amountUSD = applied?.final_price ?? priceMonthly
+  const amountPEN = applied
+    ? (applied.final_price_pen ?? amountUSD * rate).toFixed(2)
+    : (priceMonthly * rate).toFixed(2)
 
   function handleFile(f: File) {
     if (!f.type.startsWith('image/')) return
@@ -45,10 +63,55 @@ export default function YapeUpgradeStep({ plan, priceMonthly, onSuccess }: Props
     if (f) handleFile(f)
   }
 
+  async function handleApplyPromo() {
+    const code = promoInput.trim().toUpperCase()
+    if (!code) return
+    setPromoError(null)
+    try {
+      const result = await validatePromo.mutateAsync({ code, plan })
+      if (result.valid) {
+        setApplied(result)
+      } else {
+        setApplied(null)
+        setPromoError(promoMessage(result.reason))
+      }
+    } catch {
+      setApplied(null)
+      setPromoError('No se pudo validar el código. Intenta de nuevo.')
+    }
+  }
+
+  function handleRemovePromo() {
+    setApplied(null)
+    setPromoInput('')
+    setPromoError(null)
+  }
+
+  function extractPromoRejection(err: unknown): string | null {
+    const data = (err as { response?: { data?: { promo_reason?: string; detail?: string } } })
+      .response?.data
+    if (!data?.promo_reason) return null
+    return data.detail ?? promoMessage(data.promo_reason)
+  }
+
   async function handleSubmit() {
     if (!file) return
-    await mutateAsync({ plan, screenshot: file, amount: amountUSD })
-    onSuccess()
+    try {
+      await mutateAsync({
+        plan,
+        screenshot: file,
+        ...(applied?.code ? { promo_code: applied.code } : {}),
+      })
+      onSuccess()
+    } catch (err) {
+      // Cupón rechazado en el submit (p. ej. se agotó entre validar y enviar):
+      // se quita el cupón y se puede reintentar el envío sin él.
+      const rejection = extractPromoRejection(err)
+      if (rejection) {
+        setApplied(null)
+        setPromoError(`${rejection} Puedes reintentar sin el cupón.`)
+      }
+    }
   }
 
   if (!configLoading && yapeConfig && !yapeConfig.is_enabled) {
@@ -94,7 +157,7 @@ export default function YapeUpgradeStep({ plan, priceMonthly, onSuccess }: Props
               <span className="font-bold text-purple-900 dark:text-purple-100">
                 S/ {amountPEN}
               </span>{' '}
-              (aprox. ${amountUSD} USD) al número:
+              (aprox. ${amountUSD.toFixed(2)} USD) al número:
             </li>
             <li className="font-mono font-bold text-base tracking-wider text-purple-900 dark:text-purple-100">
               {yapeConfig?.phone || '—'}
@@ -117,8 +180,100 @@ export default function YapeUpgradeStep({ plan, priceMonthly, onSuccess }: Props
 
         <p className="text-xs text-purple-600 dark:text-purple-400 pt-1 border-t border-purple-200 dark:border-purple-700">
           Plan seleccionado:{' '}
-          <span className="font-semibold capitalize">{plan}</span> — ${amountUSD}/mes
+          <span className="font-semibold capitalize">{plan}</span>
+          {applied ? (
+            <>
+              {' — '}
+              <span className="line-through opacity-60">${applied.original_price?.toFixed(2)}</span>{' '}
+              <span className="font-semibold">${amountUSD.toFixed(2)}/mes</span>
+            </>
+          ) : (
+            <> — ${priceMonthly}/mes</>
+          )}
         </p>
+      </div>
+
+      {/* Discount code */}
+      <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-3">
+        {!applied ? (
+          <>
+            <button
+              type="button"
+              onClick={() => setShowPromo((v) => !v)}
+              className="flex items-center gap-2 text-sm font-medium text-purple-600 dark:text-purple-400 hover:text-purple-700"
+            >
+              <Tag className="w-4 h-4" />
+              ¿Tienes un código de descuento?
+            </button>
+
+            {showPromo && (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={promoInput}
+                  onChange={(e) => {
+                    setPromoInput(e.target.value.toUpperCase())
+                    setPromoError(null)
+                  }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleApplyPromo() }}
+                  placeholder="CODIGO"
+                  className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm font-mono uppercase tracking-wider dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleApplyPromo}
+                  disabled={!promoInput.trim() || validatePromo.isPending}
+                  className="flex items-center gap-1.5 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {validatePromo.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  Aplicar
+                </button>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Tag className="w-4 h-4 text-green-600 dark:text-green-400" />
+                <span className="font-mono text-sm font-bold text-gray-900 dark:text-white">
+                  {applied.code}
+                </span>
+                <span className="rounded bg-green-100 px-1.5 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                  aplicado
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleRemovePromo}
+                className="text-xs text-gray-500 hover:text-red-600 dark:text-gray-400"
+              >
+                Quitar
+              </button>
+            </div>
+            <div className="text-sm space-y-0.5">
+              <p className="text-gray-500 dark:text-gray-400">
+                Plan: <span className="line-through">${applied.original_price?.toFixed(2)}</span>
+              </p>
+              <p className="text-green-600 dark:text-green-400">
+                Descuento: −${applied.discount_amount?.toFixed(2)}
+              </p>
+              <p className="font-semibold text-gray-900 dark:text-white">
+                Total: ${applied.final_price?.toFixed(2)} USD
+                <span className="font-normal text-gray-500 dark:text-gray-400">
+                  {' '}(S/ {amountPEN})
+                </span>
+              </p>
+            </div>
+          </div>
+        )}
+
+        {promoError && (
+          <div className="flex items-start gap-2 rounded-lg bg-red-50 dark:bg-red-900/20 p-2.5 text-xs text-red-700 dark:text-red-300">
+            <AlertCircle className="mt-0.5 w-3.5 h-3.5 flex-shrink-0" />
+            <span>{promoError}</span>
+          </div>
+        )}
       </div>
 
       <div
@@ -175,7 +330,7 @@ export default function YapeUpgradeStep({ plan, priceMonthly, onSuccess }: Props
         )}
       </div>
 
-      {isError && (
+      {isError && !extractPromoRejection(error) && (
         <div className="flex items-start gap-2 rounded-lg bg-red-50 dark:bg-red-900/20 p-3 text-sm text-red-700 dark:text-red-300">
           <AlertCircle className="mt-0.5 w-4 h-4 flex-shrink-0" />
           <span>
