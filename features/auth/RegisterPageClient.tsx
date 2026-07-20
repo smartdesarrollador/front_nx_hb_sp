@@ -54,6 +54,7 @@ export default function RegisterPageClient() {
   const [resultTrialActive, setResultTrialActive] = useState(false)
   const [requiresPayment, setRequiresPayment] = useState(false)
   const [paymentUploadToken, setPaymentUploadToken] = useState<string | null>(null)
+  const [activatedByPromo, setActivatedByPromo] = useState(false)
   const [formData, setFormData] = useState({ email: '', password: '', organizationName: '' })
   const [registerError, setRegisterError]     = useState<string | null>(null)
 
@@ -357,6 +358,7 @@ export default function RegisterPageClient() {
           paymentUploadToken={paymentUploadToken}
           plan={selectedPlan}
           onSuccess={() => setStep(5)}
+          onActivated={() => { setActivatedByPromo(true); setStep(5) }}
         />
       )}
 
@@ -396,8 +398,39 @@ export default function RegisterPageClient() {
         </div>
       )}
 
-      {/* Step 5 — Payment pending review (paid plans) */}
-      {step === 5 && requiresPayment && (
+      {/* Step 5a — Account activated directly via 100% promo code */}
+      {step === 5 && requiresPayment && activatedByPromo && (
+        <div className="text-center space-y-6">
+          <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto">
+            <Check className="h-8 w-8 text-green-600 dark:text-green-400" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              ¡Cuenta activada!
+            </h2>
+            <p className="text-gray-600 dark:text-gray-300 mb-4">
+              Tu cupón cubrió el 100% del plan y tu cuenta ya está activa — no necesitas
+              realizar ningún pago.
+            </p>
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-sm text-amber-700 dark:text-amber-300 text-left">
+              <p className="font-medium mb-1">Revisa tu bandeja de entrada</p>
+              <p>
+                Verifica tu email haciendo clic en el enlace que te enviamos a{' '}
+                <strong>{formData.email}</strong>. Lo necesitarás para iniciar sesión.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => router.push('/login')}
+            className="w-full bg-primary-600 text-white py-2.5 rounded-lg font-semibold hover:bg-primary-700 transition-colors"
+          >
+            Ir al inicio de sesión
+          </button>
+        </div>
+      )}
+
+      {/* Step 5b — Payment pending review (paid plans) */}
+      {step === 5 && requiresPayment && !activatedByPromo && (
         <div className="text-center space-y-6">
           <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto">
             <Clock className="h-8 w-8 text-amber-600 dark:text-amber-400" />

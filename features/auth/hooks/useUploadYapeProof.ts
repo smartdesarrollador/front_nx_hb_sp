@@ -7,7 +7,7 @@ interface UploadYapeProofRequest {
   payment_upload_token: string
   screenshot: File
   plan: string
-  amount: number
+  promo_code?: string
 }
 
 interface UploadYapeProofResponse {
@@ -15,12 +15,16 @@ interface UploadYapeProofResponse {
   proof_id: string
 }
 
+// El monto NO se envía: el backend lo calcula siempre en servidor
+// (precio del plan menos el descuento del cupón, si lo hay).
 async function uploadYapeProof(data: UploadYapeProofRequest): Promise<UploadYapeProofResponse> {
   const form = new FormData()
   form.append('payment_upload_token', data.payment_upload_token)
   form.append('screenshot', data.screenshot)
   form.append('plan', data.plan)
-  form.append('amount', String(data.amount))
+  if (data.promo_code) {
+    form.append('promo_code', data.promo_code)
+  }
   const { data: response } = await publicClient.post<UploadYapeProofResponse>(
     '/auth/yape-payment-proof',
     form,
