@@ -33,10 +33,11 @@ describe('useYapeUpgrade', () => {
     })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
-    // La URL sin trailing slash es a propósito: el rewrite catch-all de
-    // next.config.ts se la agrega antes de llegar a Django (LL-005).
+    // Con trailing slash: en producción NEXT_PUBLIC_API_URL apunta directo al
+    // backend (sin pasar por el rewrite de next.config.ts), así que debe
+    // coincidir exacto con el path de Django (`yape-upgrade/`) — ver LL-001.
     expect(postSpy).toHaveBeenCalledWith(
-      '/admin/subscriptions/yape-upgrade',
+      '/admin/subscriptions/yape-upgrade/',
       expect.any(FormData),
       { headers: { 'Content-Type': undefined } },
     )

@@ -23,8 +23,12 @@ async function submitYapeUpgrade(data: YapeUpgradeRequest): Promise<YapeUpgradeR
   if (data.promo_code) {
     form.append('promo_code', data.promo_code)
   }
+  // Trailing slash requerido: en producción NEXT_PUBLIC_API_URL apunta directo al
+  // dominio del backend (sin pasar por el rewrite de next.config.ts que en dev
+  // agrega la barra), así que debe coincidir exacto con el path de Django
+  // (`yape-upgrade/`) o Django responde 500/405 vía APPEND_SLASH (ver LL-001/LL-005).
   const { data: response } = await apiClient.post<YapeUpgradeResponse>(
-    '/admin/subscriptions/yape-upgrade',
+    '/admin/subscriptions/yape-upgrade/',
     form,
     { headers: { 'Content-Type': undefined } },
   )
