@@ -1,6 +1,7 @@
 'use client'
 
 import type { SubscriptionUsage } from '../types'
+import { formatStorage } from '../formatStorage'
 
 interface Props {
   usage: SubscriptionUsage | null
@@ -24,12 +25,12 @@ function getBarWidth(current: number, limit: number | null): string {
 export default function UsageMeters({ usage, isLoading }: Props) {
   if (isLoading) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6 animate-pulse">
-        <div className="h-5 bg-gray-200 rounded w-1/3" />
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-6 animate-pulse">
+        <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
         {[1, 2, 3].map((i) => (
           <div key={i} className="space-y-2">
-            <div className="h-4 bg-gray-200 rounded w-1/2" />
-            <div className="h-2 bg-gray-200 rounded" />
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
+            <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded" />
           </div>
         ))}
       </div>
@@ -49,7 +50,7 @@ export default function UsageMeters({ usage, isLoading }: Props) {
       label: 'Almacenamiento',
       current: usage.storage?.current_gb ?? 0,
       limit: usage.storage?.limit_gb ?? null,
-      format: (v: number) => `${v.toFixed(1)} GB`,
+      format: formatStorage,
     },
     {
       label: 'Servicios activos',
@@ -60,18 +61,18 @@ export default function UsageMeters({ usage, isLoading }: Props) {
   ]
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
-      <h2 className="text-lg font-semibold text-gray-900">Uso actual</h2>
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-6">
+      <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Uso actual</h2>
       {meters.map((meter) => (
         <div key={meter.label} className="space-y-2">
           <div className="flex justify-between text-sm">
-            <span className="text-gray-600">{meter.label}</span>
-            <span className="font-medium text-gray-900">
+            <span className="text-gray-600 dark:text-gray-400">{meter.label}</span>
+            <span className="font-medium text-gray-900 dark:text-white">
               {meter.format(meter.current)}
               {meter.limit !== null ? ` / ${meter.format(meter.limit)}` : ' / Ilimitado'}
             </span>
           </div>
-          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
             <div
               role="progressbar"
               aria-valuenow={meter.current}

@@ -118,6 +118,11 @@ export default {
     moreServicesSub: 'Disponibles con un plan superior',
     seePlans: 'Ver planes',
     upToDate: 'Al dia',
+    storageTitle: 'Almacenamiento',
+    storageUsage: '{{current}} de {{limit}}',
+    storageUnlimited: 'Ilimitado',
+    storageLimitReached: 'Límite alcanzado',
+    storageUpgrade: 'Mejorar plan',
   },
   serviceCard: {
     open: 'Abrir',
@@ -440,5 +445,8 @@ export default {
     free: 'Free',
     upToDate: 'Al dia',
     january2025: 'Enero 2025',
+    storageNearLimit: 'Estás cerca del límite de almacenamiento ({{used}} de {{limit}}).',
+    storageAtLimit: 'Alcanzaste el límite de almacenamiento ({{used}} de {{limit}}). Libera espacio o mejora tu plan.',
+    storageUpgradeCta: 'Mejorar plan',
   },
 } as const

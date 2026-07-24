@@ -11,6 +11,7 @@ import { SummaryCards } from './components/SummaryCards'
 import { ActiveServicesList } from './components/ActiveServicesList'
 import { ServiceUpgradeCatalog } from './components/ServiceUpgradeCatalog'
 import { PlanUsageBanner } from './components/PlanUsageBanner'
+import { StorageUsageBar } from '@/features/subscription/components/StorageUsageBar'
 import UpgradePlanDrawer from '@/features/subscription/components/UpgradePlanDrawer'
 import { usePlans } from '@/features/subscription/hooks/usePlans'
 import { DashboardAnnouncementModal } from '@/features/announcements/components/DashboardAnnouncementModal'
@@ -72,6 +73,8 @@ export default function DashboardPage() {
       </div>
 
       <PlanUsageBanner currentUsers={0} limitUsers={limitUsers} />
+
+      <StorageUsageBar />
 
       <SummaryCards
         summary={summary}
