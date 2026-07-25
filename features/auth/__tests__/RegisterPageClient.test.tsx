@@ -1,0 +1,176 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import RegisterPageClient from '@/features/auth/RegisterPageClient'
+
+let searchParams = new URLSearchParams()
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() }),
+  useSearchParams: () => searchParams,
+  usePathname: () => '/register',
+}))
+
+vi.mock('next/link', () => ({
+  default: ({ href, children }: { href: string; children: React.ReactNode }) => (
+    <a href={href}>{children}</a>
+  ),
+}))
+
+const registerMutate = vi.fn()
+vi.mock('@/features/auth/hooks/useRegister', () => ({
+  useRegister: () => ({ mutateAsync: registerMutate, isPending: false }),
+}))
+
+vi.mock('@/features/auth/components/GoogleOAuthButton', () => ({
+  default: () => <button type="button">Google</button>,
+}))
+
+// Captura las props con las que el wizard monta el paso de pago: es donde se comprueba
+// que el ciclo elegido llega al cobro.
+const paymentStepProps = vi.fn()
+vi.mock('@/features/auth/components/YapePaymentStep', () => ({
+  default: (props: Record<string, unknown>) => {
+    paymentStepProps(props)
+    return <div data-testid="yape-step" />
+  },
+}))
+
+vi.mock('@/features/subscription/hooks/usePlans', () => ({
+  usePlans: () => ({
+    plans: [
+      { id: 'free', displayName: 'Free', priceMonthly: 0, priceAnnual: 0, description: 'Gratis', popular: false, features: [] },
+      { id: 'starter', displayName: 'Starter', priceMonthly: 19, priceAnnual: 205, description: 'Pequeños equipos', popular: false, features: [] },
+      { id: 'professional', displayName: 'Professional', priceMonthly: 79, priceAnnual: 854, description: 'Escala', popular: true, features: [] },
+    ],
+    isLoading: false,
+  }),
+}))
+
+/**
+ * Avanza del paso 1 al 3. Los labels del wizard no están asociados a sus inputs, así
+ * que se navega por placeholder — que además es lo que ve el usuario.
+ */
+async function goToPlanStep() {
+  render(<RegisterPageClient />)
+
+  fireEvent.change(screen.getByPlaceholderText('tu@empresa.com'), {
+    target: { value: 'nuevo@test.com' },
+  })
+  fireEvent.change(screen.getByPlaceholderText('Mínimo 8 caracteres'), {
+    target: { value: 'SecurePass1!' },
+  })
+  fireEvent.change(screen.getByPlaceholderText('Repite tu contraseña'), {
+    target: { value: 'SecurePass1!' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Continuar' }))
+
+  const orgInput = await screen.findByPlaceholderText('Mi Empresa S.A.')
+  fireEvent.change(orgInput, { target: { value: 'Mi Empresa' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Continuar' }))
+
+  await screen.findByText('Elige tu plan')
+}
+
+/**
+ * El toggle está traducido (`useTranslation('common')`). En los tests i18next no se
+ * inicializa, así que `t()` devuelve la clave: se consulta por ella, no por el texto.
+ */
+function toggle(cycle: 'monthly' | 'annual') {
+  return screen.getByRole('button', {
+    name: cycle === 'monthly' ? /billingMonthly/ : /billingAnnual/,
+  })
+}
+
+describe('RegisterPageClient — toggle de ciclo en el paso 3', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    searchParams = new URLSearchParams()
+    registerMutate.mockResolvedValue({ requires_payment: false })
+  })
+
+  it('muestra el toggle con el descuento máximo disponible', async () => {
+    await goToPlanStep()
+
+    expect(toggle('monthly')).toBeInTheDocument()
+    // starter 19→205 = 10%; professional 79→854 = 10%
+    expect(toggle('annual')).toHaveTextContent('billingAnnualDiscount')
+  })
+
+  it('arranca en mensual y muestra los precios mensuales', async () => {
+    await goToPlanStep()
+
+    expect(screen.getByText('$79/mes')).toBeInTheDocument()
+    expect(screen.getByText('$19/mes')).toBeInTheDocument()
+  })
+
+  it('al cambiar a anual muestra el total del año y el ahorro', async () => {
+    await goToPlanStep()
+
+    fireEvent.click(toggle('annual'))
+
+    await waitFor(() => expect(screen.getByText('$854/año')).toBeInTheDocument())
+    expect(screen.getByText('$205/año')).toBeInTheDocument()
+    expect(screen.getAllByText(/ahorras \$/).length).toBeGreaterThan(0)
+    // Free no tiene precio anual: sigue en mensual
+    expect(screen.getByText('$0/mes')).toBeInTheDocument()
+  })
+
+  it('?cycle=annual preselecciona el ciclo anual', async () => {
+    searchParams = new URLSearchParams('plan=professional&cycle=annual')
+
+    await goToPlanStep()
+
+    expect(screen.getByText('$854/año')).toBeInTheDocument()
+  })
+
+  it('un ?cycle= inválido cae a mensual sin romper el registro', async () => {
+    searchParams = new URLSearchParams('plan=professional&cycle=trimestral')
+
+    await goToPlanStep()
+
+    expect(screen.getByText('$79/mes')).toBeInTheDocument()
+    expect(screen.queryByText('$854/año')).not.toBeInTheDocument()
+  })
+
+  it('con el trial activo no se ofrece el ciclo (son 30 días gratis)', async () => {
+    searchParams = new URLSearchParams('plan=professional&trial=true')
+
+    await goToPlanStep()
+
+    expect(screen.queryByRole('button', { name: /billingMonthly/ })).not.toBeInTheDocument()
+    expect(screen.getByText('Gratis →')).toBeInTheDocument()
+  })
+
+  it('el ciclo elegido llega al paso de pago', async () => {
+    searchParams = new URLSearchParams('plan=professional')
+    registerMutate.mockResolvedValue({
+      requires_payment: true,
+      payment_upload_token: 'tok-123',
+    })
+    await goToPlanStep()
+
+    fireEvent.click(toggle('annual'))
+    fireEvent.click(screen.getByRole('button', { name: /Crear cuenta/i }))
+
+    await screen.findByTestId('yape-step')
+    expect(paymentStepProps).toHaveBeenCalledWith(
+      expect.objectContaining({ plan: 'professional', billingCycle: 'annual' }),
+    )
+  })
+
+  it('sin tocar el toggle, el paso de pago recibe mensual', async () => {
+    searchParams = new URLSearchParams('plan=starter')
+    registerMutate.mockResolvedValue({
+      requires_payment: true,
+      payment_upload_token: 'tok-456',
+    })
+    await goToPlanStep()
+
+    fireEvent.click(screen.getByRole('button', { name: /Crear cuenta/i }))
+
+    await screen.findByTestId('yape-step')
+    expect(paymentStepProps).toHaveBeenCalledWith(
+      expect.objectContaining({ billingCycle: 'monthly' }),
+    )
+  })
+})

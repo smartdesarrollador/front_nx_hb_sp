@@ -12,6 +12,14 @@ import GoogleOAuthButton from '@/features/auth/components/GoogleOAuthButton'
 import YapePaymentStep from '@/features/auth/components/YapePaymentStep'
 import { useRegister } from '@/features/auth/hooks/useRegister'
 import { usePlans } from '@/features/subscription/hooks/usePlans'
+import BillingCycleToggle from '@/features/subscription/components/BillingCycleToggle'
+import {
+  MONTHS_PER_YEAR,
+  annualDiscountPercent,
+  annualSavings,
+  maxAnnualDiscount,
+} from '@/features/subscription/plans-data'
+import type { BillingCycle, PlanData } from '@/features/subscription/types'
 
 const step1Schema = z
   .object({
@@ -38,14 +46,45 @@ type Step2Data = z.infer<typeof step2Schema>
 const FREE_STEP_LABELS  = ['Cuenta', 'Empresa', 'Plan', '¡Listo!']
 const PAID_STEP_LABELS  = ['Cuenta', 'Empresa', 'Plan', 'Pago', '¡Listo!']
 
+/**
+ * Precio de un plan en la lista del paso 3. En anual muestra la mensualidad
+ * equivalente y, debajo, el total real facturado y el ahorro — mismo criterio que la
+ * grilla de Suscripción, para que el cliente vea lo mismo antes y después de contratar.
+ */
+function PlanPrice({ plan, billingCycle }: { plan: PlanData; billingCycle: BillingCycle }) {
+  const isAnnual = billingCycle === 'annual' && plan.priceAnnual > 0
+  if (!isAnnual) {
+    return <>${plan.priceMonthly}/mes</>
+  }
+  const discount = annualDiscountPercent(plan)
+  return (
+    <span className="inline-flex flex-col items-end">
+      <span>${Math.round(plan.priceAnnual / MONTHS_PER_YEAR)}/mes</span>
+      <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
+        ${plan.priceAnnual}/año
+        {discount !== null && (
+          <span className="text-green-600 dark:text-green-400">
+            {' '}· ahorras ${annualSavings(plan)}
+          </span>
+        )}
+      </span>
+    </span>
+  )
+}
+
 export default function RegisterPageClient() {
   const router       = useRouter()
   const searchParams = useSearchParams()
   const preSelectedPlan = searchParams.get('plan') ?? 'free'
   const isTrial         = searchParams.get('trial') === 'true'
+  // Solo 'annual' activa el ciclo anual: cualquier otro valor (o basura en la URL) cae
+  // a mensual en vez de romper el registro.
+  const preSelectedCycle: BillingCycle =
+    searchParams.get('cycle') === 'annual' ? 'annual' : 'monthly'
 
   const [step, setStep]                       = useState(1)
   const [selectedPlan, setSelectedPlan]       = useState(preSelectedPlan)
+  const [billingCycle, setBillingCycle]       = useState<BillingCycle>(preSelectedCycle)
   const [trialActive, setTrialActive]         = useState(false)
 
   useEffect(() => {
@@ -60,6 +99,7 @@ export default function RegisterPageClient() {
 
   const { mutateAsync: registerMutate, isPending } = useRegister()
   const { plans: allPlans } = usePlans()
+  const annualDiscount = maxAnnualDiscount(allPlans)
 
   const STEP_LABELS = requiresPayment ? PAID_STEP_LABELS : FREE_STEP_LABELS
 
@@ -274,9 +314,20 @@ export default function RegisterPageClient() {
       {/* Step 3 — Plan selection */}
       {step === 3 && (
         <div className="space-y-4">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-            Elige tu plan
-          </h2>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+              Elige tu plan
+            </h2>
+            {/* Con el trial activo el ciclo es irrelevante (30 días gratis pase lo que
+                pase), y si ningún plan tiene ahorro anual no hay nada que ofrecer. */}
+            {!trialActive && annualDiscount !== null && (
+              <BillingCycleToggle
+                value={billingCycle}
+                onChange={setBillingCycle}
+                discountPercent={annualDiscount}
+              />
+            )}
+          </div>
           <div className="space-y-3">
             {allPlans.map((plan) => (
               <label
@@ -316,11 +367,11 @@ export default function RegisterPageClient() {
                   </div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">{plan.description}</p>
                 </div>
-                <span className="font-bold text-gray-900 dark:text-white">
+                <span className="font-bold text-gray-900 dark:text-white text-right">
                   {plan.id === 'professional' && trialActive ? (
                     <span className="text-green-700">Gratis →</span>
                   ) : (
-                    `$${plan.priceMonthly}/mes`
+                    <PlanPrice plan={plan} billingCycle={billingCycle} />
                   )}
                 </span>
               </label>
@@ -357,6 +408,7 @@ export default function RegisterPageClient() {
         <YapePaymentStep
           paymentUploadToken={paymentUploadToken}
           plan={selectedPlan}
+          billingCycle={billingCycle}
           onSuccess={() => setStep(5)}
           onActivated={() => { setActivatedByPromo(true); setStep(5) }}
         />

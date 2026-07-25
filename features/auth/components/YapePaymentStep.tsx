@@ -12,10 +12,13 @@ import {
   type PromoValidationResult,
 } from '@/features/auth/hooks/useValidatePromotion'
 import { usePlans } from '@/features/subscription/hooks/usePlans'
+import type { BillingCycle } from '@/features/subscription/types'
 
 interface Props {
   paymentUploadToken: string
   plan: string
+  /** Ciclo elegido en el paso 3. Determina precio y duración del período. */
+  billingCycle?: BillingCycle
   onSuccess: () => void
   /** Cupón 100%: la cuenta se activa sin comprobante */
   onActivated: () => void
@@ -26,7 +29,7 @@ function promoMessage(reason: string | undefined): string {
 }
 
 export default function YapePaymentStep({
-  paymentUploadToken, plan, onSuccess, onActivated,
+  paymentUploadToken, plan, billingCycle = 'monthly', onSuccess, onActivated,
 }: Props) {
   const [file, setFile]         = useState<File | null>(null)
   const [preview, setPreview]   = useState<string | null>(null)
@@ -44,8 +47,13 @@ export default function YapePaymentStep({
   const validatePromo = useValidatePromotion()
   const activateFree  = useActivateFreePlan()
 
-  // Precio real del plan (modelo Plan del backend) — nunca hardcodeado
-  const planPrice = plans.find((p) => p.id === plan)?.priceMonthly ?? 0
+  // Precio real del plan (modelo Plan del backend) — nunca hardcodeado. El backend
+  // recalcula el monto de todos modos; esto solo garantiza que lo mostrado coincida
+  // con lo que se va a cobrar.
+  const planData   = plans.find((p) => p.id === plan)
+  const isAnnual   = billingCycle === 'annual' && (planData?.priceAnnual ?? 0) > 0
+  const planPrice  = (isAnnual ? planData?.priceAnnual : planData?.priceMonthly) ?? 0
+  const periodLabel = isAnnual ? 'año' : 'mes'
   const rate      = parseFloat(yapeConfig?.exchange_rate ?? '3.75')
 
   const amountUSD = applied?.final_price ?? planPrice
@@ -82,7 +90,7 @@ export default function YapePaymentStep({
     if (!code) return
     setPromoError(null)
     try {
-      const result = await validatePromo.mutateAsync({ code, plan })
+      const result = await validatePromo.mutateAsync({ code, plan, billing_cycle: billingCycle })
       if (result.valid) {
         setApplied(result)
       } else {
@@ -115,6 +123,7 @@ export default function YapePaymentStep({
         payment_upload_token: paymentUploadToken,
         screenshot: file,
         plan,
+        billing_cycle: billingCycle,
         ...(applied?.code ? { promo_code: applied.code } : {}),
       })
       onSuccess()
@@ -137,6 +146,7 @@ export default function YapePaymentStep({
         payment_upload_token: paymentUploadToken,
         plan,
         promo_code: applied.code,
+        billing_cycle: billingCycle,
       })
       onActivated()
     } catch (err) {
@@ -222,15 +232,17 @@ export default function YapePaymentStep({
         <p className="text-xs text-purple-600 dark:text-purple-400 pt-1 border-t border-purple-200 dark:border-purple-700">
           Plan seleccionado:{' '}
           <span className="font-semibold capitalize">{plan}</span>
+          {' · '}
+          <span className="font-semibold">{isAnnual ? 'anual' : 'mensual'}</span>
           {!plansLoading && (
             applied ? (
               <>
                 {' — '}
                 <span className="line-through opacity-60">${applied.original_price?.toFixed(2)}</span>{' '}
-                <span className="font-semibold">${amountUSD.toFixed(2)}/mes</span>
+                <span className="font-semibold">${amountUSD.toFixed(2)}/{periodLabel}</span>
               </>
             ) : (
-              <> — ${planPrice}/mes</>
+              <> — ${planPrice}/{periodLabel}</>
             )
           )}
         </p>

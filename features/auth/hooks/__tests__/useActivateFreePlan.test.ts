@@ -59,4 +59,31 @@ describe('useActivateFreePlan', () => {
     })
     await waitFor(() => expect(result.current.isError).toBe(true))
   })
+
+  it('envía billing_cycle: del ciclo depende la duración del período activado', async () => {
+    let capturedBody: Record<string, unknown> | undefined
+    server.use(
+      http.post(ACTIVATE_URL, async ({ request }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json({ message: 'ok', activated: true })
+      }),
+    )
+
+    const { result } = renderHookWithProviders(() => useActivateFreePlan())
+    await act(async () => {
+      result.current.mutate({
+        payment_upload_token: 'tok-annual',
+        plan: 'professional',
+        promo_code: 'GRATIS100',
+        billing_cycle: 'annual',
+      })
+    })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect(capturedBody).toMatchObject({
+      plan: 'professional',
+      promo_code: 'GRATIS100',
+      billing_cycle: 'annual',
+    })
+  })
 })

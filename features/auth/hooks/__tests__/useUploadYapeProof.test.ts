@@ -66,4 +66,45 @@ describe('useUploadYapeProof', () => {
     expect(form.get('promo_code')).toBeNull()
     expect(form.get('amount')).toBeNull()
   })
+
+  it('envía billing_cycle cuando el registro es anual', async () => {
+    const postSpy = vi.spyOn(publicClient, 'post').mockResolvedValue({
+      data: { message: 'ok', proof_id: 'p3', billing_cycle: 'annual' },
+    })
+
+    const { result } = renderHookWithProviders(() => useUploadYapeProof())
+    await act(async () => {
+      result.current.mutate({
+        payment_upload_token: 'tok-annual',
+        screenshot: makeScreenshot(),
+        plan: 'professional',
+        billing_cycle: 'annual',
+      })
+    })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    const form = postSpy.mock.calls[0][1] as FormData
+    expect(form.get('billing_cycle')).toBe('annual')
+    // También en anual el monto lo calcula el backend
+    expect(form.get('amount')).toBeNull()
+    expect(result.current.data?.billing_cycle).toBe('annual')
+  })
+
+  it('omite billing_cycle si no se especifica (el backend usa monthly)', async () => {
+    const postSpy = vi.spyOn(publicClient, 'post').mockResolvedValue({
+      data: { message: 'ok', proof_id: 'p4', billing_cycle: 'monthly' },
+    })
+
+    const { result } = renderHookWithProviders(() => useUploadYapeProof())
+    await act(async () => {
+      result.current.mutate({
+        payment_upload_token: 'tok-default',
+        screenshot: makeScreenshot(),
+        plan: 'starter',
+      })
+    })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect((postSpy.mock.calls[0][1] as FormData).get('billing_cycle')).toBeNull()
+  })
 })

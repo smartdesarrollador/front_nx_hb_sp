@@ -15,6 +15,14 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { usePlans } from '@/features/subscription/hooks/usePlans'
+import BillingCycleToggle from '@/features/subscription/components/BillingCycleToggle'
+import {
+  MONTHS_PER_YEAR,
+  annualDiscountPercent,
+  annualSavings,
+  maxAnnualDiscount,
+} from '@/features/subscription/plans-data'
+import type { BillingCycle, PlanData } from '@/features/subscription/types'
 import { useLatestReleases } from '@/features/desktop/hooks/useLatestReleases'
 import { PlatformDownloadCard } from '@/features/desktop/components/PlatformDownloadCard'
 import type { ReleasePlatform } from '@/features/desktop/types'
@@ -57,6 +65,32 @@ export default function LandingPageClient() {
   const { plans } = usePlans()
   const { releases, isLoading: releasesLoading } = useLatestReleases()
   const catalogItems = useLandingCatalog()
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly')
+  const annualDiscount = maxAnnualDiscount(plans)
+
+  /**
+   * Destino del CTA de cada plan. El ciclo viaja en la URL porque el registro ya lo
+   * honra (fases 1-2); si no llegara, el visitante elegiría "Anual" y se le cobraría
+   * mensual sin aviso.
+   *
+   * El trial de Professional es una oferta del mundo mensual: en anual el botón pasa a
+   * contratación normal, para no aterrizar en un trial que ignora lo elegido.
+   */
+  function registerHref(plan: PlanData): string {
+    const isAnnual = billingCycle === 'annual' && plan.priceAnnual > 0
+    if (plan.id === 'professional' && !isAnnual) {
+      return '/register?plan=professional&trial=true'
+    }
+    return `/register?plan=${plan.id}${isAnnual ? '&cycle=annual' : ''}`
+  }
+
+  function planCtaLabel(plan: PlanData): string {
+    if (plan.id === 'free') return t('freeCta')
+    if (plan.id === 'starter') return t('starterCta')
+    if (plan.id === 'enterprise') return t('enterpriseCta')
+    // Professional: el trial solo se ofrece en mensual.
+    return billingCycle === 'annual' && plan.priceAnnual > 0 ? t('proCta') : t('proTrialCta')
+  }
 
   useEffect(() => {
     if (isAuthenticated) router.replace('/dashboard')
@@ -298,6 +332,17 @@ export default function LandingPageClient() {
             <p className="text-[rgba(11,39,64,0.66)] dark:text-[rgba(234,241,248,0.72)]">
               {t('pricingSub')}
             </p>
+            {/* Se oculta si ningún plan tiene ahorro anual real: no se ofrece una
+                elección sin efecto (misma regla que en Suscripción y en el registro). */}
+            {annualDiscount !== null && (
+              <div className="flex justify-center mt-8">
+                <BillingCycleToggle
+                  value={billingCycle}
+                  onChange={setBillingCycle}
+                  discountPercent={annualDiscount}
+                />
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
@@ -328,11 +373,27 @@ export default function LandingPageClient() {
 
                   <div className="mb-8">
                     <span className={`text-4xl font-bold ${plan.popular ? 'text-white' : 'text-[#0B2740] dark:text-[#EAF1F8]'}`}>
-                      ${plan.priceMonthly}
+                      $
+                      {billingCycle === 'annual' && plan.priceAnnual > 0
+                        ? Math.round(plan.priceAnnual / MONTHS_PER_YEAR)
+                        : plan.priceMonthly}
                     </span>
                     <span className={`text-sm ml-1 ${plan.popular ? 'text-primary-200' : 'text-[rgba(11,39,64,0.45)] dark:text-[rgba(234,241,248,0.50)]'}`}>
                       {t('perMonth')}
                     </span>
+                    {billingCycle === 'annual' && plan.priceAnnual > 0 && (
+                      // En la tarjeta "popular" el fondo es azul: el verde no se lee,
+                      // así que ahí el ahorro va en el claro de la propia paleta.
+                      <p className={`text-xs mt-2 ${plan.popular ? 'text-primary-200' : 'text-[rgba(11,39,64,0.45)] dark:text-[rgba(234,241,248,0.50)]'}`}>
+                        {t('billedAnnually', { total: plan.priceAnnual })}
+                        {annualDiscountPercent(plan) !== null && (
+                          <span className={plan.popular ? 'text-primary-100 font-medium' : 'text-green-600 dark:text-green-400 font-medium'}>
+                            {' · '}
+                            {t('annualSaving', { amount: annualSavings(plan) })}
+                          </span>
+                        )}
+                      </p>
+                    )}
                   </div>
 
                   <ul className="space-y-3 mb-8">
@@ -354,24 +415,14 @@ export default function LandingPageClient() {
                 </div>
 
                 <button
-                  onClick={() =>
-                    plan.id === 'professional'
-                      ? router.push('/register?plan=professional&trial=true')
-                      : router.push(`/register?plan=${plan.id}`)
-                  }
+                  onClick={() => router.push(registerHref(plan))}
                   className={`w-full py-3 rounded-xl font-semibold transition-all ${
                     plan.popular
                       ? 'bg-white text-primary-700 hover:bg-primary-50'
                       : 'bg-primary-600 text-white hover:bg-primary-700 shadow-lg shadow-primary-600/20'
                   }`}
                 >
-                  {plan.id === 'free'
-                    ? t('freeCta')
-                    : plan.id === 'starter'
-                      ? t('starterCta')
-                      : plan.id === 'enterprise'
-                        ? t('enterpriseCta')
-                        : t('proTrialCta')}
+                  {planCtaLabel(plan)}
                 </button>
               </div>
             ))}
