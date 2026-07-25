@@ -18,6 +18,7 @@ function makeSubscription(overrides: Partial<CurrentSubscription> = {}): Current
     days_until_expiry: 30,
     is_renewable: false,
     has_pending_proof: false,
+    pending_plan: null,
     mrr: 79,
     usage: {
       users: { current: 1, limit: 25 },
@@ -32,6 +33,7 @@ function renderCard(overrides: Partial<CurrentSubscription> = {}, props = {}) {
   const onRenew = vi.fn()
   const onChangePlan = vi.fn()
   const onCancelRequest = vi.fn()
+  const onCompletePayment = vi.fn()
   render(
     <CurrentPlanCard
       subscription={makeSubscription(overrides)}
@@ -39,11 +41,12 @@ function renderCard(overrides: Partial<CurrentSubscription> = {}, props = {}) {
       canUpgradePlan
       onChangePlan={onChangePlan}
       onRenew={onRenew}
+      onCompletePayment={onCompletePayment}
       onCancelRequest={onCancelRequest}
       {...props}
     />,
   )
-  return { onRenew, onChangePlan, onCancelRequest }
+  return { onRenew, onChangePlan, onCancelRequest, onCompletePayment }
 }
 
 describe('CurrentPlanCard — semáforo de vencimiento', () => {
@@ -152,5 +155,58 @@ describe('CurrentPlanCard — otros estados', () => {
   it('mantiene el banner de trial Professional', () => {
     renderCard({ status: 'trialing', trial_end: '2026-08-01T00:00:00Z' })
     expect(screen.getByText('Prueba Professional activa')).toBeInTheDocument()
+  })
+})
+
+describe('CurrentPlanCard — registro con el pago a medias', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  // La cuenta existe en Free porque el registro no toca tenant.plan: sin este aviso el
+  // cliente no tiene ninguna señal de qué contrató ni de que puede terminar de pagar.
+  const abandoned = {
+    plan: 'free' as const,
+    plan_display: 'Free',
+    status: 'pending_payment' as const,
+    pending_plan: 'professional' as const,
+    current_period_end: null,
+    days_until_expiry: null,
+  }
+
+  it('avisa del plan que quedó sin pagar y ofrece completarlo', () => {
+    const { onCompletePayment } = renderCard(abandoned)
+
+    expect(screen.getByRole('status')).toHaveTextContent('activa tu plan Professional')
+    fireEvent.click(screen.getByRole('button', { name: 'Completar pago' }))
+    expect(onCompletePayment).toHaveBeenCalledWith('professional')
+  })
+
+  it('el badge dice "Pago pendiente", no "en revisión"', () => {
+    // Nunca envió comprobante: leer "en revisión" le haría esperar una activación que
+    // no iba a llegar.
+    renderCard(abandoned)
+
+    expect(screen.getByText('Pago pendiente')).toBeInTheDocument()
+    expect(screen.queryByText('Pago en revisión')).not.toBeInTheDocument()
+  })
+
+  it('con un comprobante ya enviado manda el aviso de revisión', () => {
+    renderCard({ ...abandoned, has_pending_proof: true })
+
+    expect(screen.getByRole('status')).toHaveTextContent('Comprobante en revisión')
+    expect(screen.queryByRole('button', { name: 'Completar pago' })).not.toBeInTheDocument()
+    expect(screen.getByText('Pago en revisión')).toBeInTheDocument()
+  })
+
+  it('sin permiso de facturación se informa pero no se ofrece pagar', () => {
+    renderCard(abandoned, { canUpgradePlan: false })
+
+    expect(screen.getByRole('status')).toHaveTextContent('activa tu plan Professional')
+    expect(screen.queryByRole('button', { name: 'Completar pago' })).not.toBeInTheDocument()
+  })
+
+  it('una suscripción normal no muestra nada de esto', () => {
+    renderCard()
+
+    expect(screen.queryByText(/activa tu plan/)).not.toBeInTheDocument()
   })
 })

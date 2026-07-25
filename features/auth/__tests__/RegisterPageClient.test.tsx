@@ -85,6 +85,9 @@ describe('RegisterPageClient — toggle de ciclo en el paso 3', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     searchParams = new URLSearchParams()
+    // El wizard rehidrata al montar: sin limpiar, un test que llegó al paso de pago
+    // arrancaría el siguiente directamente ahí.
+    sessionStorage.clear()
     registerMutate.mockResolvedValue({ requires_payment: false })
   })
 
@@ -172,5 +175,116 @@ describe('RegisterPageClient — toggle de ciclo en el paso 3', () => {
     expect(paymentStepProps).toHaveBeenCalledWith(
       expect.objectContaining({ billingCycle: 'monthly' }),
     )
+  })
+})
+
+describe('RegisterPageClient — recuperar el paso de pago', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    searchParams = new URLSearchParams()
+    sessionStorage.clear()
+    registerMutate.mockResolvedValue({ requires_payment: false })
+  })
+
+  function saved() {
+    const raw = sessionStorage.getItem('hub-register-payment')
+    return raw ? JSON.parse(raw) : null
+  }
+
+  it('guarda el paso de pago en cuanto la cuenta existe', async () => {
+    // A partir de "Crear cuenta" ya hay tenant + usuario: perder la página aquí es lo
+    // que dejaba cuentas sin pagar y sin salida.
+    searchParams = new URLSearchParams('plan=professional')
+    registerMutate.mockResolvedValue({
+      requires_payment: true,
+      payment_upload_token: 'tok-abc',
+    })
+    await goToPlanStep()
+
+    fireEvent.click(toggle('annual'))
+    fireEvent.click(screen.getByRole('button', { name: /Crear cuenta/i }))
+
+    await screen.findByTestId('yape-step')
+    expect(saved()).toMatchObject({
+      token: 'tok-abc',
+      plan: 'professional',
+      cycle: 'annual',
+      email: 'nuevo@test.com',
+      organizationName: 'Mi Empresa',
+    })
+  })
+
+  it('con un plan gratuito no guarda nada (no hay pago que retomar)', async () => {
+    await goToPlanStep()
+    fireEvent.click(screen.getByRole('button', { name: /Crear cuenta/i }))
+
+    await waitFor(() => expect(registerMutate).toHaveBeenCalled())
+    expect(saved()).toBeNull()
+  })
+
+  it('al montar con una sesión guardada abre el paso de pago', async () => {
+    sessionStorage.setItem('hub-register-payment', JSON.stringify({
+      token: 'tok-restaurado', plan: 'starter', cycle: 'annual',
+      email: 'vuelvo@test.com', organizationName: 'Org', savedAt: Date.now(),
+    }))
+
+    render(<RegisterPageClient />)
+
+    await screen.findByTestId('yape-step')
+    expect(paymentStepProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        paymentUploadToken: 'tok-restaurado',
+        plan: 'starter',
+        billingCycle: 'annual',
+        // Solo al rehidratar se comprueba si el token sigue vivo.
+        verifyToken: true,
+      }),
+    )
+  })
+
+  it('en el camino normal no se comprueba el token (acaba de emitirse)', async () => {
+    searchParams = new URLSearchParams('plan=starter')
+    registerMutate.mockResolvedValue({
+      requires_payment: true,
+      payment_upload_token: 'tok-nuevo',
+    })
+    await goToPlanStep()
+
+    fireEvent.click(screen.getByRole('button', { name: /Crear cuenta/i }))
+
+    await screen.findByTestId('yape-step')
+    expect(paymentStepProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({ verifyToken: false }),
+    )
+  })
+
+  it('cambiar el ciclo en el paso de pago se guarda también', async () => {
+    sessionStorage.setItem('hub-register-payment', JSON.stringify({
+      token: 'tok-1', plan: 'professional', cycle: 'monthly',
+      email: 'a@test.com', organizationName: 'Org', savedAt: Date.now(),
+    }))
+    render(<RegisterPageClient />)
+    await screen.findByTestId('yape-step')
+
+    const props = paymentStepProps.mock.calls.at(-1)![0] as {
+      onBillingCycleChange: (c: string) => void
+    }
+    props.onBillingCycleChange('annual')
+
+    await waitFor(() => expect(saved().cycle).toBe('annual'))
+  })
+
+  it('al enviar el comprobante deja de haber nada que retomar', async () => {
+    sessionStorage.setItem('hub-register-payment', JSON.stringify({
+      token: 'tok-1', plan: 'starter', cycle: 'monthly',
+      email: 'a@test.com', organizationName: 'Org', savedAt: Date.now(),
+    }))
+    render(<RegisterPageClient />)
+    await screen.findByTestId('yape-step')
+
+    const props = paymentStepProps.mock.calls.at(-1)![0] as { onSuccess: () => void }
+    props.onSuccess()
+
+    await waitFor(() => expect(saved()).toBeNull())
   })
 })

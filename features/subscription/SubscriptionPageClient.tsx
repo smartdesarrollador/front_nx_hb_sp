@@ -72,6 +72,9 @@ export default function SubscriptionPage() {
           canUpgradePlan={canUpgradePlan}
           onChangePlan={scrollToPlans}
           onRenew={handleRenew}
+          // Mismo mecanismo que renovar: el drawer de pago ya existente, con el plan
+          // pendiente preseleccionado. Para el backend es un upgrade free → plan.
+          onCompletePayment={setUpgradeTarget}
           onCancelRequest={() => setShowCancelModal(true)}
         />
         <UsageMeters usage={subscription?.usage ?? null} isLoading={isLoading} />

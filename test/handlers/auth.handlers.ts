@@ -71,4 +71,9 @@ export const authHandlers = [
   http.post(`${API}/api/v1/auth/resend-verification`, () =>
     HttpResponse.json({ message: 'If your email is registered and unverified, a new link has been sent.' }),
   ),
+
+  // Estado del token de subida — mismo envelope que PaymentTokenStatusView.
+  http.get(`${API}/api/v1/auth/payment-token-status`, () =>
+    HttpResponse.json({ valid: true, expires_in: 86400 }),
+  ),
 ]

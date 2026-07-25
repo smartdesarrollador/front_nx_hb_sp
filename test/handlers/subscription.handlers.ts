@@ -15,6 +15,15 @@ const mockSubscription = {
   trial_start: null,
   trial_end: null,
   created_at: '2026-01-01T00:00:00Z',
+  // Campos derivados de CurrentSubscriptionSerializer. Estaban ausentes aquí y el mock
+  // dejaba de parecerse a la respuesta real: un handler incompleto convierte los tests
+  // en un falso guardarraíl (LL-106).
+  grace_until: null,
+  renewal_state: 'active',
+  days_until_expiry: 30,
+  is_renewable: false,
+  has_pending_proof: false,
+  pending_plan: null,
   usage: {
     users: { current: 5, limit: 25 },
     storage: { current_gb: 2, limit_gb: 20 },

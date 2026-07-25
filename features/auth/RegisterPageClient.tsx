@@ -11,6 +11,11 @@ import AuthLayout from '@/features/auth/components/AuthLayout'
 import GoogleOAuthButton from '@/features/auth/components/GoogleOAuthButton'
 import YapePaymentStep from '@/features/auth/components/YapePaymentStep'
 import { useRegister } from '@/features/auth/hooks/useRegister'
+import {
+  clearRegisterPaymentSession,
+  loadRegisterPaymentSession,
+  saveRegisterPaymentSession,
+} from '@/features/auth/registerPaymentSession'
 import { usePlans } from '@/features/subscription/hooks/usePlans'
 import BillingCycleToggle from '@/features/subscription/components/BillingCycleToggle'
 import {
@@ -96,6 +101,33 @@ export default function RegisterPageClient() {
   const [activatedByPromo, setActivatedByPromo] = useState(false)
   const [formData, setFormData] = useState({ email: '', password: '', organizationName: '' })
   const [registerError, setRegisterError]     = useState<string | null>(null)
+  // Se llegó al paso de pago rehidratando, no completando el wizard: solo en ese caso
+  // hay que comprobar si el token sigue vivo (ver YapePaymentStep).
+  const [restoredPayment, setRestoredPayment] = useState(false)
+
+  // Rehidratación tras un refresco o un back. Va en un efecto de montaje y no en el
+  // estado inicial: el SSR de Next renderiza el paso 1, y arrancar directamente en el 4
+  // rompería la hidratación. Un frame en el paso 1 es un precio menor.
+  useEffect(() => {
+    const saved = loadRegisterPaymentSession()
+    if (!saved) return
+    setFormData((prev) => ({
+      ...prev,
+      email: saved.email,
+      organizationName: saved.organizationName,
+    }))
+    setSelectedPlan(saved.plan)
+    setBillingCycle(saved.cycle)
+    setPaymentUploadToken(saved.token)
+    setRequiresPayment(true)
+    setRestoredPayment(true)
+    setStep(4)
+  }, [])
+
+  function finishPayment(onDone: () => void) {
+    clearRegisterPaymentSession()
+    onDone()
+  }
 
   const { mutateAsync: registerMutate, isPending } = useRegister()
   const { plans: allPlans } = usePlans()
@@ -137,6 +169,15 @@ export default function RegisterPageClient() {
       } else if (result.requires_payment && result.payment_upload_token) {
         setRequiresPayment(true)
         setPaymentUploadToken(result.payment_upload_token)
+        // La cuenta ya está creada: si ahora se pierde la página, esto es lo único que
+        // permite volver al paso de pago en vez de quedarse sin pagar y sin salida.
+        saveRegisterPaymentSession({
+          token: result.payment_upload_token,
+          plan: selectedPlan,
+          cycle: billingCycle,
+          email: formData.email,
+          organizationName: formData.organizationName,
+        })
         setStep(4)
       } else {
         setStep(4)
@@ -409,8 +450,23 @@ export default function RegisterPageClient() {
           paymentUploadToken={paymentUploadToken}
           plan={selectedPlan}
           billingCycle={billingCycle}
-          onSuccess={() => setStep(5)}
-          onActivated={() => { setActivatedByPromo(true); setStep(5) }}
+          // El ciclo sube al wizard para que haya una sola fuente de verdad: en el paso
+          // de pago ya no se puede retroceder, pero el ciclo sigue siendo editable.
+          onBillingCycleChange={(cycle) => {
+            setBillingCycle(cycle)
+            saveRegisterPaymentSession({
+              token: paymentUploadToken,
+              plan: selectedPlan,
+              cycle,
+              email: formData.email,
+              organizationName: formData.organizationName,
+            })
+          }}
+          // Solo tras rehidratar puede estar muerto: recién emitido, no hay nada que
+          // comprobar.
+          verifyToken={restoredPayment}
+          onSuccess={() => finishPayment(() => setStep(5))}
+          onActivated={() => finishPayment(() => { setActivatedByPromo(true); setStep(5) })}
         />
       )}
 

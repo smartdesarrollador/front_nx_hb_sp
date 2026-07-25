@@ -1,6 +1,13 @@
 'use client'
 
-import type { CurrentSubscription, RenewalState } from '../types'
+import type { CurrentSubscription, PlanType, RenewalState } from '../types'
+
+const PLAN_LABELS: Record<PlanType, string> = {
+  free: 'Free',
+  starter: 'Starter',
+  professional: 'Professional',
+  enterprise: 'Enterprise',
+}
 
 interface Props {
   subscription: CurrentSubscription | null
@@ -8,6 +15,8 @@ interface Props {
   canUpgradePlan: boolean
   onChangePlan: () => void
   onRenew: () => void
+  /** Abre el flujo de pago con el plan que quedó pendiente al registrarse. */
+  onCompletePayment: (plan: PlanType) => void
   onCancelRequest: () => void
 }
 
@@ -18,7 +27,10 @@ const STATUS_LABELS: Record<string, string> = {
   canceled: 'Cancelado',
   incomplete: 'Incompleto',
   unpaid: 'Impago',
-  pending_payment: 'Pago en revisión',
+  // "En revisión" se reserva para cuando hay un comprobante de verdad (has_pending_proof,
+  // ver statusLabel abajo): quien abandonó el registro nunca envió nada, y leer que su
+  // pago "está en revisión" le hacía esperar una activación que no iba a llegar.
+  pending_payment: 'Pago pendiente',
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -93,6 +105,7 @@ export default function CurrentPlanCard({
   canUpgradePlan,
   onChangePlan,
   onRenew,
+  onCompletePayment,
   onCancelRequest,
 }: Props) {
   if (isLoading) {
@@ -113,6 +126,14 @@ export default function CurrentPlanCard({
   // Un comprobante en revisión manda sobre el resto: volver a pagar devolvería 409, así
   // que se informa del estado en vez de ofrecer un botón que va a fallar.
   const pendingProof = subscription.has_pending_proof
+
+  // Registro con plan pagado que quedó a medias: la cuenta existe en Free y nadie le ha
+  // dicho al cliente que puede terminar de pagar desde aquí.
+  const pendingPlan = !pendingProof ? subscription.pending_plan : null
+
+  const statusLabel = pendingProof
+    ? 'Pago en revisión'
+    : (STATUS_LABELS[subscription.status] ?? subscription.status)
 
   const handleCta = () => {
     if (ctaAction === 'renew') onRenew()
@@ -139,7 +160,32 @@ export default function CurrentPlanCard({
         </div>
       )}
 
-      {!pendingProof && banner && (
+      {pendingPlan && (
+        <div
+          className="bg-amber-400/20 border border-amber-300 rounded-lg p-3 text-amber-50 text-sm space-y-2"
+          role="status"
+        >
+          <div>
+            <p className="font-semibold">
+              Te falta un paso: activa tu plan {PLAN_LABELS[pendingPlan] ?? pendingPlan}
+            </p>
+            <p className="text-white/80">
+              Elegiste este plan al registrarte pero el pago quedó pendiente, así que tu
+              cuenta sigue en Free.
+            </p>
+          </div>
+          {canUpgradePlan && (
+            <button
+              onClick={() => onCompletePayment(pendingPlan)}
+              className="bg-white text-primary-600 font-semibold py-1.5 px-3 rounded-lg hover:bg-white/90 transition-colors"
+            >
+              Completar pago
+            </button>
+          )}
+        </div>
+      )}
+
+      {!pendingProof && !pendingPlan && banner && (
         <div className={`border rounded-lg p-3 text-sm ${banner}`} role="status">
           {bannerText(subscription)}
         </div>
@@ -160,7 +206,7 @@ export default function CurrentPlanCard({
         <span
           className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[subscription.status] ?? 'bg-gray-100 text-gray-800'}`}
         >
-          {STATUS_LABELS[subscription.status] ?? subscription.status}
+          {statusLabel}
         </span>
       </div>
 

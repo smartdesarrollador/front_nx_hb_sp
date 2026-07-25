@@ -39,6 +39,12 @@ export interface CurrentSubscription {
   is_renewable: boolean
   /** Hay un comprobante esperando revisión: el pago se deshabilita (evita el 409). */
   has_pending_proof: boolean
+  /**
+   * Plan que se eligió al registrarse y nunca se pagó (`null` si no aplica). El registro
+   * con plan pagado deja el tenant en Free, así que sin este campo el cliente que
+   * abandonó el pago no tiene ninguna señal de qué contrató.
+   */
+  pending_plan: PlanType | null
   mrr: number
   usage: SubscriptionUsage
   professional_trial_used?: boolean

@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import { Upload, X, AlertCircle, Smartphone, Tag, Loader2, PartyPopper } from 'lucide-react'
 import { useUploadYapeProof } from '@/features/auth/hooks/useUploadYapeProof'
 import { useYapeConfig } from '@/features/auth/hooks/useYapeConfig'
+import { usePaymentTokenStatus } from '@/features/auth/hooks/usePaymentTokenStatus'
 import { useActivateFreePlan } from '@/features/auth/hooks/useActivateFreePlan'
 import {
   PROMO_REASON_MESSAGES,
@@ -12,6 +13,8 @@ import {
   type PromoValidationResult,
 } from '@/features/auth/hooks/useValidatePromotion'
 import { usePlans } from '@/features/subscription/hooks/usePlans'
+import BillingCycleToggle from '@/features/subscription/components/BillingCycleToggle'
+import { annualDiscountPercent } from '@/features/subscription/plans-data'
 import type { BillingCycle } from '@/features/subscription/types'
 
 interface Props {
@@ -19,6 +22,19 @@ interface Props {
   plan: string
   /** Ciclo elegido en el paso 3. Determina precio y duración del período. */
   billingCycle?: BillingCycle
+  /**
+   * Permite cambiar el ciclo aquí mismo. En este paso ya no hay vuelta atrás —la cuenta
+   * se creó al pulsar "Crear cuenta"— pero el ciclo es lo único que aún no está decidido
+   * en el backend: solo se materializa al crear el comprobante. Sin esta prop, el toggle
+   * no se muestra.
+   */
+  onBillingCycleChange?: (cycle: BillingCycle) => void
+  /**
+   * Comprobar contra el backend que el token siga vivo antes de pedir el comprobante.
+   * Solo tiene sentido al rehidratar el paso (refresco / back): recién emitido no hay
+   * nada que comprobar, y preguntar sería una llamada de más en el camino feliz.
+   */
+  verifyToken?: boolean
   onSuccess: () => void
   /** Cupón 100%: la cuenta se activa sin comprobante */
   onActivated: () => void
@@ -29,7 +45,8 @@ function promoMessage(reason: string | undefined): string {
 }
 
 export default function YapePaymentStep({
-  paymentUploadToken, plan, billingCycle = 'monthly', onSuccess, onActivated,
+  paymentUploadToken, plan, billingCycle = 'monthly', onBillingCycleChange,
+  verifyToken = false, onSuccess, onActivated,
 }: Props) {
   const [file, setFile]         = useState<File | null>(null)
   const [preview, setPreview]   = useState<string | null>(null)
@@ -43,6 +60,7 @@ export default function YapePaymentStep({
 
   const { data: yapeConfig, isLoading: configLoading } = useYapeConfig()
   const { plans, isLoading: plansLoading } = usePlans()
+  const tokenStatus = usePaymentTokenStatus(paymentUploadToken, verifyToken)
   const { mutateAsync, isPending, isError, error } = useUploadYapeProof()
   const validatePromo = useValidatePromotion()
   const activateFree  = useActivateFreePlan()
@@ -54,6 +72,8 @@ export default function YapePaymentStep({
   const isAnnual   = billingCycle === 'annual' && (planData?.priceAnnual ?? 0) > 0
   const planPrice  = (isAnnual ? planData?.priceAnnual : planData?.priceMonthly) ?? 0
   const periodLabel = isAnnual ? 'año' : 'mes'
+  // `null` cuando el plan no tiene ahorro anual → sin toggle que ofrecer.
+  const cycleDiscount = planData ? annualDiscountPercent(planData) : null
   const rate      = parseFloat(yapeConfig?.exchange_rate ?? '3.75')
 
   const amountUSD = applied?.final_price ?? planPrice
@@ -109,6 +129,42 @@ export default function YapePaymentStep({
     setPromoError(null)
   }
 
+  /**
+   * Cambiar de ciclo obliga a revalidar el cupón: su descuento se calculó contra el
+   * precio del OTRO ciclo. Sin esto se mostraría un total que el backend recalcularía
+   * distinto (el monto siempre se recalcula en servidor).
+   *
+   * Handler explícito y no `useEffect` sobre billingCycle: la intención queda a la
+   * vista y no depende del orden en que React aplique el estado — por eso se revalida
+   * con el `cycle` recibido, no con la prop, que aún no se ha actualizado.
+   */
+  async function handleCycleChange(cycle: BillingCycle) {
+    if (cycle === billingCycle) return
+    onBillingCycleChange?.(cycle)
+
+    const code = applied?.code
+    if (!code) return
+
+    setPromoError(null)
+    try {
+      const result = await validatePromo.mutateAsync({ code, plan, billing_cycle: cycle })
+      if (result.valid) {
+        // Un porcentaje sigue valiendo y se recalcula solo; un monto fijo que cubría el
+        // mensual puede dejar de cubrir el anual y pasar a ser un descuento parcial.
+        setApplied(result)
+      } else {
+        setApplied(null)
+        setPromoError(
+          `El cupón ${code} no aplica al plan ${cycle === 'annual' ? 'anual' : 'mensual'}. ` +
+          promoMessage(result.reason),
+        )
+      }
+    } catch {
+      setApplied(null)
+      setPromoError('No se pudo revalidar el código con el ciclo nuevo. Vuelve a aplicarlo.')
+    }
+  }
+
   function extractPromoRejection(err: unknown): string | null {
     const data = (err as { response?: { data?: { promo_reason?: string; detail?: string } } })
       .response?.data
@@ -156,6 +212,36 @@ export default function YapePaymentStep({
     }
   }
 
+  // Token muerto al rehidratar (caducado o ya usado). Se avisa ANTES de pedir el
+  // comprobante: descubrirlo después de subirlo sería un 400 opaco tras el esfuerzo.
+  // La cuenta ya existe, así que el camino de vuelta es la sesión normal, no repetir el
+  // registro (el email daría "ya registrado").
+  if (verifyToken && tokenStatus.data && !tokenStatus.data.valid) {
+    return (
+      <div className="space-y-4">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+          El enlace de pago caducó
+        </h2>
+        <div
+          className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 p-4 text-sm text-amber-800 dark:text-amber-300 space-y-2"
+          role="status"
+        >
+          <p className="font-medium">Tu cuenta ya está creada — no la pierdas.</p>
+          <p>
+            Verifica tu email con el enlace que te enviamos, inicia sesión y completa el
+            pago desde <strong>Suscripción</strong>. Tu plan te estará esperando ahí.
+          </p>
+        </div>
+        <a
+          href="/login"
+          className="block w-full text-center bg-primary-600 text-white py-2.5 rounded-lg font-semibold hover:bg-primary-700 transition-colors"
+        >
+          Ir al inicio de sesión
+        </a>
+      </div>
+    )
+  }
+
   // Yape disabled by admin
   if (!configLoading && yapeConfig && !yapeConfig.is_enabled) {
     return (
@@ -179,6 +265,24 @@ export default function YapePaymentStep({
           Realiza el pago y sube el comprobante para activar tu cuenta.
         </p>
       </div>
+
+      {/* Aquí ya no se puede retroceder (la cuenta está creada), pero el ciclo sigue
+          siendo editable: no se fija hasta que se envía el comprobante. Se oculta si el
+          plan no tiene precio anual — no se ofrece una elección sin efecto. */}
+      {onBillingCycleChange && cycleDiscount !== null && (
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <span className="text-sm text-gray-500 dark:text-gray-400">
+            ¿Prefieres otro ciclo?
+          </span>
+          <div className={validatePromo.isPending ? 'pointer-events-none opacity-60' : ''}>
+            <BillingCycleToggle
+              value={billingCycle}
+              onChange={handleCycleChange}
+              discountPercent={cycleDiscount}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Payment instructions */}
       <div className="rounded-xl border border-purple-200 bg-purple-50 dark:border-purple-800 dark:bg-purple-900/20 p-4 space-y-3">
