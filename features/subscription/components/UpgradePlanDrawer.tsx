@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { X, ArrowLeft, Check } from 'lucide-react'
-import type { PlanData, PlanType } from '../types'
+import type { BillingCycle, PlanData, PlanType } from '../types'
 import { isUpgrade } from '../plans-data'
 import YapeUpgradeStep from './YapeUpgradeStep'
 
@@ -11,14 +11,22 @@ interface Props {
   currentPlan: PlanType
   /** Si se pasa, salta el paso de selección y abre directo en 'yape' para ese plan. */
   initialPlan?: PlanType
+  /** Ciclo elegido en el toggle. Determina precio y duración del período (30 / 365 d). */
+  billingCycle?: BillingCycle
   onClose: () => void
 }
 
 type Step = 'select' | 'yape' | 'success'
 
-export default function UpgradePlanDrawer({ plans, currentPlan, initialPlan, onClose }: Props) {
+export default function UpgradePlanDrawer({
+  plans, currentPlan, initialPlan, billingCycle = 'monthly', onClose,
+}: Props) {
   const [step, setStep]               = useState<Step>(initialPlan ? 'yape' : 'select')
   const [selectedPlan, setSelectedPlan] = useState<PlanType | null>(initialPlan ?? null)
+
+  // Renovación = pagar el plan que ya se tiene. Comparte endpoint y flujo con el upgrade
+  // (ADR-008, decisión 3); solo cambian los rótulos.
+  const isRenewal = initialPlan !== undefined && initialPlan === currentPlan
 
   const upgradablePlans = plans.filter((p) => isUpgrade(currentPlan, p.id))
   const selectedPlanData = selectedPlan ? plans.find((p) => p.id === selectedPlan) ?? null : null
@@ -62,7 +70,7 @@ export default function UpgradePlanDrawer({ plans, currentPlan, initialPlan, onC
             )}
             <h2 className="text-lg font-bold text-gray-900 dark:text-white">
               {step === 'select' && 'Elige tu nuevo plan'}
-              {step === 'yape' && 'Confirmar pago con Yape'}
+              {step === 'yape' && (isRenewal ? 'Renovar tu plan' : 'Confirmar pago con Yape')}
               {step === 'success' && '¡Comprobante enviado!'}
             </h2>
           </div>
@@ -135,6 +143,9 @@ export default function UpgradePlanDrawer({ plans, currentPlan, initialPlan, onC
             <YapeUpgradeStep
               plan={selectedPlan}
               priceMonthly={selectedPlanData?.priceMonthly ?? 0}
+              priceAnnual={selectedPlanData?.priceAnnual ?? 0}
+              billingCycle={billingCycle}
+              isRenewal={isRenewal}
               onSuccess={handleSuccess}
             />
           )}

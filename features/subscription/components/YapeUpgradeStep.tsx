@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { Upload, X, AlertCircle, Smartphone, Tag, Loader2 } from 'lucide-react'
 import { useYapeUpgrade } from '../hooks/useYapeUpgrade'
+import type { BillingCycle } from '../types'
 import { useYapeConfig } from '@/features/auth/hooks/useYapeConfig'
 import {
   PROMO_REASON_MESSAGES,
@@ -14,6 +15,10 @@ import {
 interface Props {
   plan: string
   priceMonthly: number
+  priceAnnual: number
+  billingCycle: BillingCycle
+  /** Se está pagando el plan actual (renovación), no uno superior. Solo afecta rótulos. */
+  isRenewal?: boolean
   onSuccess: () => void
 }
 
@@ -21,7 +26,9 @@ function promoMessage(reason: string | undefined): string {
   return PROMO_REASON_MESSAGES[reason as PromoReason] ?? 'El código no es válido.'
 }
 
-export default function YapeUpgradeStep({ plan, priceMonthly, onSuccess }: Props) {
+export default function YapeUpgradeStep({
+  plan, priceMonthly, priceAnnual, billingCycle, isRenewal, onSuccess,
+}: Props) {
   const [file, setFile]         = useState<File | null>(null)
   const [preview, setPreview]   = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
@@ -36,11 +43,18 @@ export default function YapeUpgradeStep({ plan, priceMonthly, onSuccess }: Props
   const { mutateAsync, isPending, isError, error } = useYapeUpgrade()
   const validatePromo = useValidatePromotion()
 
+  // El precio base es el del ciclo elegido. El backend lo recalcula igual
+  // (yape_upgrade_views.py nunca confía en el monto del cliente); esto solo garantiza
+  // que el importe mostrado coincida con el que se va a cobrar.
+  const isAnnual   = billingCycle === 'annual' && priceAnnual > 0
+  const basePrice  = isAnnual ? priceAnnual : priceMonthly
+  const periodLabel = isAnnual ? 'año' : 'mes'
+
   const rate      = parseFloat(yapeConfig?.exchange_rate ?? '3.75')
-  const amountUSD = applied?.final_price ?? priceMonthly
+  const amountUSD = applied?.final_price ?? basePrice
   const amountPEN = applied
     ? (applied.final_price_pen ?? amountUSD * rate).toFixed(2)
-    : (priceMonthly * rate).toFixed(2)
+    : (basePrice * rate).toFixed(2)
 
   function handleFile(f: File) {
     if (!f.type.startsWith('image/')) return
@@ -68,7 +82,7 @@ export default function YapeUpgradeStep({ plan, priceMonthly, onSuccess }: Props
     if (!code) return
     setPromoError(null)
     try {
-      const result = await validatePromo.mutateAsync({ code, plan })
+      const result = await validatePromo.mutateAsync({ code, plan, billing_cycle: billingCycle })
       if (result.valid) {
         setApplied(result)
       } else {
@@ -100,6 +114,7 @@ export default function YapeUpgradeStep({ plan, priceMonthly, onSuccess }: Props
       await mutateAsync({
         plan,
         screenshot: file,
+        billing_cycle: billingCycle,
         ...(applied?.code ? { promo_code: applied.code } : {}),
       })
       onSuccess()
@@ -131,7 +146,9 @@ export default function YapeUpgradeStep({ plan, priceMonthly, onSuccess }: Props
       <div>
         <h2 className="text-xl font-bold text-gray-900 dark:text-white">Pago con Yape</h2>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Realiza el pago y sube el comprobante para activar tu nuevo plan.
+          {isRenewal
+            ? `Realiza el pago y sube el comprobante para renovar tu plan por 1 ${periodLabel} más.`
+            : 'Realiza el pago y sube el comprobante para activar tu nuevo plan.'}
         </p>
       </div>
 
@@ -181,14 +198,16 @@ export default function YapeUpgradeStep({ plan, priceMonthly, onSuccess }: Props
         <p className="text-xs text-purple-600 dark:text-purple-400 pt-1 border-t border-purple-200 dark:border-purple-700">
           Plan seleccionado:{' '}
           <span className="font-semibold capitalize">{plan}</span>
+          {' · '}
+          <span className="font-semibold">{isAnnual ? 'anual' : 'mensual'}</span>
           {applied ? (
             <>
               {' — '}
               <span className="line-through opacity-60">${applied.original_price?.toFixed(2)}</span>{' '}
-              <span className="font-semibold">${amountUSD.toFixed(2)}/mes</span>
+              <span className="font-semibold">${amountUSD.toFixed(2)}/{periodLabel}</span>
             </>
           ) : (
-            <> — ${priceMonthly}/mes</>
+            <> — ${basePrice}/{periodLabel}</>
           )}
         </p>
       </div>

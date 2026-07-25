@@ -28,6 +28,8 @@ export interface PromoValidationResult {
 interface ValidatePromotionRequest {
   code: string
   plan: string
+  /** Determina sobre qué precio del plan se calcula el descuento. Default: monthly. */
+  billing_cycle?: 'monthly' | 'annual'
 }
 
 export const PROMO_REASON_MESSAGES: Record<PromoReason, string> = {

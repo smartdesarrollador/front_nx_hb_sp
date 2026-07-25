@@ -2,7 +2,7 @@
 
 import { Check, X } from 'lucide-react'
 import type { BillingCycle, PlanData, PlanType } from '../types'
-import { isUpgrade } from '../plans-data'
+import { annualDiscountPercent, annualSavings, isUpgrade, maxAnnualDiscount, MONTHS_PER_YEAR } from '../plans-data'
 import BillingCycleToggle from './BillingCycleToggle'
 
 interface PlanCardProps {
@@ -11,15 +11,22 @@ interface PlanCardProps {
   billingCycle: BillingCycle
   onSelect: (plan: PlanType) => void
   canUpgrade: boolean
+  /** El plan actual es renovable hoy: su botón pasa de inerte a "Renovar plan". */
+  isRenewable?: boolean
   onTrial?: (plan: PlanType) => void
   canTrial?: boolean
 }
 
-function PlanCard({ plan, currentPlan, billingCycle, onSelect, canUpgrade, onTrial, canTrial }: PlanCardProps) {
+function PlanCard({
+  plan, currentPlan, billingCycle, onSelect, canUpgrade, isRenewable, onTrial, canTrial,
+}: PlanCardProps) {
   const isCurrent = plan.id === currentPlan
-  const canSelect = canUpgrade && isUpgrade(currentPlan, plan.id)
-  const price =
-    billingCycle === 'annual' ? Math.round(plan.priceAnnual / 12) : plan.priceMonthly
+  const canRenew = Boolean(isCurrent && isRenewable && canUpgrade)
+  const canSelect = (canUpgrade && isUpgrade(currentPlan, plan.id)) || canRenew
+  const isAnnual = billingCycle === 'annual' && plan.priceAnnual > 0
+  const price = isAnnual ? Math.round(plan.priceAnnual / MONTHS_PER_YEAR) : plan.priceMonthly
+  const discount = annualDiscountPercent(plan)
+  const savings = annualSavings(plan)
 
   let borderClass = 'border-gray-200'
   if (isCurrent) borderClass = 'border-primary-500 ring-2 ring-primary-500/30'
@@ -44,8 +51,13 @@ function PlanCard({ plan, currentPlan, billingCycle, onSelect, canUpgrade, onTri
         <div className="mt-3">
           <span className="text-3xl font-bold text-gray-900">${price}</span>
           <span className="text-gray-500 text-sm">/mes</span>
-          {billingCycle === 'annual' && plan.priceAnnual > 0 && (
-            <p className="text-xs text-gray-400 mt-1">facturado anualmente</p>
+          {isAnnual && (
+            <p className="text-xs text-gray-400 mt-1">
+              ${plan.priceAnnual}/año facturado de una vez
+              {discount !== null && (
+                <span className="text-green-600 font-medium"> · ahorras ${savings} (−{discount}%)</span>
+              )}
+            </p>
           )}
         </div>
       </div>
@@ -65,16 +77,22 @@ function PlanCard({ plan, currentPlan, billingCycle, onSelect, canUpgrade, onTri
 
       <button
         onClick={() => canSelect && onSelect(plan.id)}
-        disabled={isCurrent || !canSelect}
+        disabled={!canSelect}
         className={`w-full py-2 px-4 rounded-lg text-sm font-semibold transition-colors ${
-          isCurrent
-            ? 'bg-gray-100 text-gray-400 cursor-default'
-            : canSelect
-              ? 'bg-primary-600 text-white hover:bg-primary-700'
+          canSelect
+            ? 'bg-primary-600 text-white hover:bg-primary-700'
+            : isCurrent
+              ? 'bg-gray-100 text-gray-400 cursor-default'
               : 'bg-gray-100 text-gray-400 cursor-not-allowed'
         }`}
       >
-        {isCurrent ? 'Plan actual' : canSelect ? 'Actualizar plan' : 'Plan inferior'}
+        {canRenew
+          ? 'Renovar plan'
+          : isCurrent
+            ? 'Plan actual'
+            : canSelect
+              ? 'Actualizar plan'
+              : 'Plan inferior'}
       </button>
 
       {plan.id === 'professional' && canTrial && !isCurrent && onTrial && (
@@ -96,6 +114,7 @@ interface Props {
   onBillingCycleChange: (cycle: BillingCycle) => void
   onUpgrade: (plan: PlanType) => void
   canUpgrade: boolean
+  isRenewable?: boolean
   onTrial?: (plan: PlanType) => void
   canTrial?: boolean
 }
@@ -107,6 +126,7 @@ export default function PlanComparisonGrid({
   onBillingCycleChange,
   onUpgrade,
   canUpgrade,
+  isRenewable,
   onTrial,
   canTrial,
 }: Props) {
@@ -114,7 +134,11 @@ export default function PlanComparisonGrid({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-gray-900">Planes disponibles</h2>
-        <BillingCycleToggle value={billingCycle} onChange={onBillingCycleChange} />
+        <BillingCycleToggle
+          value={billingCycle}
+          onChange={onBillingCycleChange}
+          discountPercent={maxAnnualDiscount(plans)}
+        />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {plans.map((plan) => (
@@ -125,6 +149,7 @@ export default function PlanComparisonGrid({
             billingCycle={billingCycle}
             onSelect={onUpgrade}
             canUpgrade={canUpgrade}
+            isRenewable={isRenewable}
             onTrial={onTrial}
             canTrial={canTrial}
           />

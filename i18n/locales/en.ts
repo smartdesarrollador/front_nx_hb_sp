@@ -448,5 +448,11 @@ export default {
     storageNearLimit: 'You are close to your storage limit ({{used}} of {{limit}}).',
     storageAtLimit: 'You have reached your storage limit ({{used}} of {{limit}}). Free up space or upgrade your plan.',
     storageUpgradeCta: 'Upgrade plan',
+    planExpiringSoon_one: 'Your {{plan}} plan expires in {{count}} day. Renew it to keep your access.',
+    planExpiringSoon_other: 'Your {{plan}} plan expires in {{count}} days. Renew it to keep your access.',
+    planInGrace: 'Your plan expired. You have until {{date}} to renew without losing access.',
+    planExpired: 'Your plan expired and your account went back to Free. Your data is intact.',
+    planRenewCta: 'Renew plan',
+    planReactivateCta: 'Reactivate plan',
   },
 } as const

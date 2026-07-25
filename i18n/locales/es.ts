@@ -448,5 +448,11 @@ export default {
     storageNearLimit: 'Estás cerca del límite de almacenamiento ({{used}} de {{limit}}).',
     storageAtLimit: 'Alcanzaste el límite de almacenamiento ({{used}} de {{limit}}). Libera espacio o mejora tu plan.',
     storageUpgradeCta: 'Mejorar plan',
+    planExpiringSoon_one: 'Tu plan {{plan}} vence en {{count}} día. Renuévalo para no perder acceso.',
+    planExpiringSoon_other: 'Tu plan {{plan}} vence en {{count}} días. Renuévalo para no perder acceso.',
+    planInGrace: 'Tu plan venció. Tienes hasta el {{date}} para renovar sin perder acceso.',
+    planExpired: 'Tu plan venció y tu cuenta volvió a Free. Tus datos siguen intactos.',
+    planRenewCta: 'Renovar plan',
+    planReactivateCta: 'Reactivar plan',
   },
 } as const

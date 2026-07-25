@@ -2,7 +2,10 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { act, waitFor } from '@testing-library/react'
 import { apiClient } from '@/lib/axios'
 import { renderHookWithProviders } from '@/test/utils'
-import { useYapeUpgrade } from '@/features/subscription/hooks/useYapeUpgrade'
+import {
+  PENDING_PROOF_MESSAGE,
+  useYapeUpgrade,
+} from '@/features/subscription/hooks/useYapeUpgrade'
 
 // Nota: no se usa MSW aquí — el adapter http de axios (forzado en test/setup.ts
 // para que MSW intercepte) no serializa el FormData de jsdom
@@ -65,5 +68,70 @@ describe('useYapeUpgrade', () => {
     const form = postSpy.mock.calls[0][1] as FormData
     expect(form.get('promo_code')).toBeNull()
     expect(form.get('amount')).toBeNull()
+  })
+
+  it('envía billing_cycle cuando se paga el ciclo anual', async () => {
+    const postSpy = vi.spyOn(apiClient, 'post').mockResolvedValue({
+      data: { message: 'ok', proof_id: 'p3', is_renewal: true, billing_cycle: 'annual' },
+    })
+
+    const { result } = renderHookWithProviders(() => useYapeUpgrade())
+    await act(async () => {
+      result.current.mutate({
+        plan: 'professional',
+        screenshot: makeScreenshot(),
+        billing_cycle: 'annual',
+      })
+    })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    const form = postSpy.mock.calls[0][1] as FormData
+    expect(form.get('billing_cycle')).toBe('annual')
+    // El monto sigue calculándose en servidor, también en anual
+    expect(form.get('amount')).toBeNull()
+    expect(result.current.data?.is_renewal).toBe(true)
+  })
+
+  it('omite billing_cycle si no se especifica (el backend usa monthly)', async () => {
+    const postSpy = vi.spyOn(apiClient, 'post').mockResolvedValue({
+      data: { message: 'ok', proof_id: 'p4', is_renewal: false, billing_cycle: 'monthly' },
+    })
+
+    const { result } = renderHookWithProviders(() => useYapeUpgrade())
+    await act(async () => {
+      result.current.mutate({ plan: 'starter', screenshot: makeScreenshot() })
+    })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect((postSpy.mock.calls[0][1] as FormData).get('billing_cycle')).toBeNull()
+  })
+
+  it('traduce el 409 a un mensaje sobre el comprobante pendiente', async () => {
+    // El backend devuelve 409 si ya hay un proof pending: dos comprobantes podrían
+    // aprobarse ambos y cobrar dos veces. Es estado esperable, no un fallo crudo.
+    vi.spyOn(apiClient, 'post').mockRejectedValue({
+      response: { status: 409, data: { detail: 'Ya tienes un comprobante en revisión.' } },
+    })
+
+    const { result } = renderHookWithProviders(() => useYapeUpgrade())
+    await act(async () => {
+      result.current.mutate({ plan: 'professional', screenshot: makeScreenshot() })
+    })
+    await waitFor(() => expect(result.current.isError).toBe(true))
+
+    expect(result.current.error?.message).toBe(PENDING_PROOF_MESSAGE)
+  })
+
+  it('propaga otros errores sin reescribirlos', async () => {
+    const original = { response: { status: 400, data: { detail: 'Plan inválido.' } } }
+    vi.spyOn(apiClient, 'post').mockRejectedValue(original)
+
+    const { result } = renderHookWithProviders(() => useYapeUpgrade())
+    await act(async () => {
+      result.current.mutate({ plan: 'professional', screenshot: makeScreenshot() })
+    })
+    await waitFor(() => expect(result.current.isError).toBe(true))
+
+    expect(result.current.error).toBe(original)
   })
 })

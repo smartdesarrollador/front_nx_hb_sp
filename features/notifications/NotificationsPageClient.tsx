@@ -11,7 +11,7 @@ import EmptyNotifications from './components/EmptyNotifications'
 import type { NotificationFilter } from './types'
 
 export default function NotificationsPage() {
-  const { t } = useTranslation('hub')
+  const { t } = useTranslation('notifications')
   const { notifications, unreadCount, isLoading } = useHubNotifications()
   const markAsRead = useMarkAsRead()
   const markAllAsRead = useMarkAllAsRead()
@@ -29,7 +29,7 @@ export default function NotificationsPage() {
     <div className="space-y-6 max-w-3xl">
       {/* Header + Marcar todo */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">{t('notifications.title')}</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
         <button
           onClick={() => markAllAsRead.mutate()}
           disabled={unreadCount === 0 || markAllAsRead.isPending}
@@ -38,7 +38,7 @@ export default function NotificationsPage() {
           {markAllAsRead.isPending && (
             <span className="animate-spin w-3 h-3 border border-primary-600 border-t-transparent rounded-full" />
           )}
-          {t('notifications.markAllRead')}
+          {t('markAllRead')}
         </button>
       </div>
 

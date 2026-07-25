@@ -3,12 +3,13 @@
 import { useTranslation } from 'react-i18next'
 import type { NotificationFilter } from '../types'
 
+// Claves dentro del namespace 'notifications' (ver i18n/config.ts), sin prefijo.
 export const FILTER_LABELS: Record<NotificationFilter, string> = {
-  all: 'notifications.all',
-  billing: 'notifications.billing',
-  security: 'notifications.security',
-  services: 'notifications.services',
-  system: 'notifications.system',
+  all: 'all',
+  billing: 'billing',
+  security: 'security',
+  services: 'services',
+  system: 'system',
 }
 
 const FILTERS: NotificationFilter[] = ['all', 'billing', 'security', 'services', 'system']
@@ -20,7 +21,7 @@ interface Props {
 }
 
 export default function NotificationFilters({ activeFilter, onChange, unreadCount: _unreadCount }: Props) {
-  const { t } = useTranslation('hub')
+  const { t } = useTranslation('notifications')
   return (
     <div role="tablist" className="flex items-center gap-2 flex-wrap">
       {FILTERS.map((filter) => (

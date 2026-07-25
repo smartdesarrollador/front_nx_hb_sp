@@ -21,10 +21,10 @@ export const CATEGORY_COLORS: Record<NotificationCategory, string> = {
 
 export function timeAgo(created_at: string, t: TFunction): string {
   const diff = Math.floor((Date.now() - new Date(created_at).getTime()) / 1000)
-  if (diff < 60) return t('notifications.justNow')
-  if (diff < 3600) return t('notifications.minAgo').replace('{n}', String(Math.floor(diff / 60)))
-  if (diff < 86400) return t('notifications.hoursAgo').replace('{n}', String(Math.floor(diff / 3600)))
-  return t('notifications.daysAgo').replace('{n}', String(Math.floor(diff / 86400)))
+  if (diff < 60) return t('justNow')
+  if (diff < 3600) return t('minAgo').replace('{n}', String(Math.floor(diff / 60)))
+  if (diff < 86400) return t('hoursAgo').replace('{n}', String(Math.floor(diff / 3600)))
+  return t('daysAgo').replace('{n}', String(Math.floor(diff / 86400)))
 }
 
 interface Props {
@@ -33,7 +33,7 @@ interface Props {
 }
 
 export default function NotificationItem({ notification, onMarkRead }: Props) {
-  const { t } = useTranslation('hub')
+  const { t } = useTranslation('notifications')
   const Icon = ICON_MAP[notification.category]
   const colorClass = CATEGORY_COLORS[notification.category]
 

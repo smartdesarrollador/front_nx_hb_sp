@@ -36,6 +36,18 @@ export default function SubscriptionPage() {
     )
   }
 
+  const scrollToPlans = () => {
+    document.getElementById('plan-comparison')?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  // Renovar = abrir el drawer con el plan actual preseleccionado (mismo flujo de pago que
+  // el upgrade, ADR-008 decisión 3). Un tenant ya degradado a Free no renueva: vuelve a
+  // contratar desde la grilla, así que ahí solo hacemos scroll.
+  const handleRenew = () => {
+    if (subscription && subscription.is_renewable) setUpgradeTarget(subscription.plan)
+    else scrollToPlans()
+  }
+
   return (
     <div className="space-y-8">
       <div>
@@ -58,10 +70,8 @@ export default function SubscriptionPage() {
           subscription={subscription}
           isLoading={isLoading}
           canUpgradePlan={canUpgradePlan}
-          onChangePlan={() => {
-            const el = document.getElementById('plan-comparison')
-            el?.scrollIntoView({ behavior: 'smooth' })
-          }}
+          onChangePlan={scrollToPlans}
+          onRenew={handleRenew}
           onCancelRequest={() => setShowCancelModal(true)}
         />
         <UsageMeters usage={subscription?.usage ?? null} isLoading={isLoading} />
@@ -76,6 +86,7 @@ export default function SubscriptionPage() {
             onBillingCycleChange={setBillingCycle}
             onUpgrade={setUpgradeTarget}
             canUpgrade={canUpgradePlan}
+            isRenewable={subscription?.is_renewable && !subscription?.has_pending_proof}
             onTrial={(plan) => { if (plan === 'professional') startTrial() }}
             canTrial={canTrial}
           />
@@ -87,6 +98,7 @@ export default function SubscriptionPage() {
           plans={plans}
           currentPlan={subscription?.plan ?? 'free'}
           initialPlan={upgradeTarget}
+          billingCycle={billingCycle}
           onClose={() => setUpgradeTarget(null)}
         />
       )}

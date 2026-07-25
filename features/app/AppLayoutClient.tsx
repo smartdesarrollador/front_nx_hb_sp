@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import Navbar from './components/Navbar'
 import { StorageLimitBanner } from '@/features/subscription/components/StorageLimitBanner'
+import { RenewalReminderBanner } from '@/features/subscription/components/RenewalReminderBanner'
 
 interface AppLayoutClientProps {
   children: React.ReactNode
@@ -27,6 +28,8 @@ export default function AppLayoutClient({ children }: AppLayoutClientProps) {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Navbar />
       <main className="pt-16 min-h-screen">
+        {/* Vencimiento primero: perder el plan pesa más que quedarse sin espacio. */}
+        <RenewalReminderBanner />
         <StorageLimitBanner />
         <div className="p-6">
           {children}

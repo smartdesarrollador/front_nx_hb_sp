@@ -12,7 +12,16 @@ const mockNotification = {
 }
 
 export const notificationsHandlers = [
-  http.get(`${API}/api/v1/app/notifications/`, () => HttpResponse.json([mockNotification])),
+  // Envelope idéntico al de HubNotificationListView. Antes devolvía un array pelado, y
+  // esa divergencia con el backend real ocultó durante meses que el hook leía una clave
+  // inexistente: el test pasaba por la rama `Array.isArray` mientras la app real
+  // mostraba la bandeja siempre vacía.
+  http.get(`${API}/api/v1/app/notifications/`, () =>
+    HttpResponse.json({
+      notifications: [mockNotification],
+      pagination: { page: 1, per_page: 20, total: 1 },
+    }),
+  ),
 
   http.post(`${API}/api/v1/app/notifications/:id/read/`, () =>
     HttpResponse.json({ message: 'Marked as read' }),
