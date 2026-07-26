@@ -53,8 +53,10 @@ export default {
     pricingSub: 'Sin costos ocultos. Cambia o cancela cuando quieras.',
     mostPopular: 'Mas popular',
     perMonth: '/mes',
-    billedAnnually: '${{total}}/año facturado de una vez',
-    annualSaving: 'ahorras ${{amount}}',
+    // El importe llega YA formateado en la moneda elegida ($205 · S/ 769), por eso
+    // el símbolo salió de la cadena.
+    billedAnnually: '{{total}}/año facturado de una vez',
+    annualSaving: 'ahorras {{amount}}',
     footerRights: 'Todos los derechos reservados.',
     freePlanDesc: 'Para explorar la plataforma',
     starterPlanDesc: 'Para profesionales y pequenos equipos',
@@ -265,6 +267,8 @@ export default {
     deactivateMfa: 'Desactivar MFA',
     langSection: 'Idioma y region',
     langField: 'Idioma',
+    currencyField: 'Moneda de visualización',
+    currencyHelp: 'El cobro siempre se realiza en USD.',
     timezoneField: 'Zona horaria',
     notifSection: 'Notificaciones',
     notifBilling: 'Facturacion y pagos',
@@ -459,5 +463,8 @@ export default {
     billingAnnualDiscount: 'hasta −{{percent}}%',
     planRenewCta: 'Renovar plan',
     planReactivateCta: 'Reactivar plan',
+    currencySwitchAria: 'Cambiar moneda',
+    currencyNote: 'Se cobra en USD',
+    priceNote: 'Los precios se cobran en USD. El importe en soles es referencial.',
   },
 } as const

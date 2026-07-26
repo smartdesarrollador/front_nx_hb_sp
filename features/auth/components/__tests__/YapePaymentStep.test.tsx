@@ -25,9 +25,21 @@ vi.mock('@/features/auth/hooks/useYapeConfig', () => ({
   useYapeConfig: () => ({
     data: {
       is_enabled: true, phone: '999888777', holder_name: 'Titular',
-      exchange_rate: '3.75', instructions_note: '',
+      instructions_note: '',
     },
     isLoading: false,
+  }),
+}))
+
+// El tipo de cambio ya no sale de la config de Yape sino de /public/currency/.
+const currency = vi.hoisted(() => ({ penRate: 3.75 as number | null }))
+
+vi.mock('@/hooks/useCurrencyConfig', () => ({
+  useCurrencyConfig: () => ({
+    penRate: currency.penRate,
+    defaultCurrency: 'USD',
+    isLoading: false,
+    isError: false,
   }),
 }))
 
@@ -85,7 +97,7 @@ describe('YapePaymentStep (registro) — ciclo de facturación', () => {
 
   it('en anual cobra el precio del año completo', () => {
     renderStep({ billingCycle: 'annual' })
-    expect(screen.getByText(/S\/\s*3202\.50/)).toBeInTheDocument() // 854 × 3.75
+    expect(screen.getByText(/S\/\s*3,202\.50/)).toBeInTheDocument() // 854 × 3.75
     expect(screen.getByText('anual')).toBeInTheDocument()
   })
 
@@ -149,20 +161,22 @@ describe('YapePaymentStep (registro) — cambiar el ciclo en el propio paso de p
 
   // En este paso ya no se puede retroceder (la cuenta está creada), pero el ciclo no se
   // fija hasta que se envía el comprobante: por eso se puede cambiar aquí.
+  // Etiquetas reales y no claves i18n: el componente importa el store de UI, que
+  // inicializa i18n, así que `t()` ya resuelve las traducciones en el test.
   function toggle(cycle: 'monthly' | 'annual') {
     return screen.getByRole('button', {
-      name: cycle === 'monthly' ? /billingMonthly/ : /billingAnnual/,
+      name: cycle === 'monthly' ? /Mensual/ : /Anual/,
     })
   }
 
   it('no muestra el toggle si no se puede cambiar el ciclo', () => {
     renderStep() // sin onBillingCycleChange
-    expect(screen.queryByRole('button', { name: /billingMonthly/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Mensual/ })).not.toBeInTheDocument()
   })
 
   it('no muestra el toggle si el plan no tiene precio anual', () => {
     renderStep({ plan: 'starter', onBillingCycleChange: vi.fn() }) // starter: priceAnnual 0
-    expect(screen.queryByRole('button', { name: /billingMonthly/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Mensual/ })).not.toBeInTheDocument()
   })
 
   it('permite pasar de anual a mensual y avisa al wizard', async () => {
@@ -181,7 +195,7 @@ describe('YapePaymentStep (registro) — cambiar el ciclo en el propio paso de p
         onBillingCycleChange={vi.fn()} onSuccess={vi.fn()} onActivated={vi.fn()}
       />,
     )
-    expect(screen.getByText(/S\/\s*3202\.50/)).toBeInTheDocument()
+    expect(screen.getByText(/S\/\s*3,202\.50/)).toBeInTheDocument()
 
     rerender(
       <YapePaymentStep

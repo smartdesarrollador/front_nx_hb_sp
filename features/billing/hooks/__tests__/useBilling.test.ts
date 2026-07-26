@@ -23,6 +23,7 @@ const paymentMethodFixture = {
 }
 const invoiceFixture = {
   id: 'inv1', number: 'INV-001', amount: 79, currency: 'usd',
+  exchange_rate: '3.7500', amount_pen: 296.25,
   status: 'paid', created_at: '2026-03-01T00:00:00Z', pdf_url: 'https://example.com/inv.pdf',
 }
 
@@ -62,6 +63,10 @@ describe('useInvoices', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false), { timeout: 5000 })
     expect(Array.isArray(result.current.invoices)).toBe(true)
     expect(result.current.invoices.length).toBeGreaterThan(0)
+    // Assert de contenido: sin él, el handler podía devolver una forma que el hook
+    // no sabe leer y el test seguiría en verde con una lista vacía.
+    expect(result.current.invoices[0].amount).toBe(79)
+    expect(result.current.invoices[0].amount_pen).toBe(296.25)
   })
 
   it('isLoading pasa a false', async () => {

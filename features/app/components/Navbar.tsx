@@ -21,6 +21,7 @@ import { useAuthContext } from '@/features/auth/AuthContext'
 import { RoleBadge } from '@/features/team/components/RoleBadge'
 import { getPrimaryRole, type TeamMember } from '@/features/team/types'
 import LanguageSwitcher from './LanguageSwitcher'
+import CurrencySwitch from '@/components/shared/CurrencySwitch'
 
 const NAV_LINKS = [
   { href: '/dashboard', labelKey: 'dashboard' },
@@ -135,6 +136,8 @@ function Navbar() {
           <span className="hidden sm:flex items-center bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full px-2.5 py-1 text-xs font-medium">
             {plan.charAt(0).toUpperCase() + plan.slice(1)}
           </span>
+
+          <CurrencySwitch variant="compact" />
 
           <LanguageSwitcher />
 
@@ -260,6 +263,8 @@ function Navbar() {
                   )}
                   {darkMode ? t('lightMode') : t('darkMode')}
                 </button>
+                {/* El drawer de upgrade se usa desde móvil, así que la moneda importa aquí. */}
+                <CurrencySwitch variant="compact" />
               </div>
 
               <div className="px-3 py-2">

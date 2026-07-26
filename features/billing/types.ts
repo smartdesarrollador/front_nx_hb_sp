@@ -26,6 +26,10 @@ export interface Invoice {
   number: string
   amount: number
   currency: string
+  /** Tasa USD→PEN del momento del pago. `null` si no hubo conversión registrada. */
+  exchange_rate: string | null
+  /** Soles efectivamente transferidos. Dato histórico: no sigue el switch de moneda. */
+  amount_pen: number | null
   status: InvoiceStatus
   created_at: string
   period_start: string

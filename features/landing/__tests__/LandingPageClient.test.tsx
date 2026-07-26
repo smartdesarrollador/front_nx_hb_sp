@@ -2,6 +2,20 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import LandingPageClient from '@/features/landing/LandingPageClient'
 import type { PlanData } from '@/features/subscription/types'
+import { useUiStore } from '@/store/uiStore'
+
+// El hook real usa TanStack Query y estos tests montan sin QueryClientProvider.
+// Mockearlo explícitamente además evita que MSW deje pasar la petición en silencio
+// (onUnhandledRequest: 'bypass') y el test acabe pasando por la razón equivocada.
+vi.mock('@/hooks/useCurrencyConfig', () => ({
+  useCurrencyConfig: () => ({
+    penRate: 3.75,
+    defaultCurrency: 'USD',
+    isLoading: false,
+    isError: false,
+  }),
+}))
+
 
 const push = vi.fn()
 
@@ -19,7 +33,10 @@ vi.mock('next/link', () => ({
 
 // Devuelve la clave + args: permite afirmar QUÉ texto se eligió (p. ej. proCta vs
 // proTrialCta) sin depender de la traducción concreta.
-vi.mock('react-i18next', () => ({
+// Spread del módulo real: el componente importa el store de UI, que a su vez
+// inicializa i18n y necesita `initReactI18next`.
+vi.mock('react-i18next', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('react-i18next')>()),
   useTranslation: () => ({
     t: (key: string, opts?: Record<string, unknown>) =>
       opts ? `${key}:${Object.values(opts).join(',')}` : key,
@@ -81,6 +98,7 @@ function ctaFor(planId: string) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  useUiStore.setState({ currency: null })
   mockPlans = DEFAULT_PLANS
   global.fetch = vi.fn().mockResolvedValue({ ok: false, json: async () => [] }) as unknown as typeof fetch
 })
@@ -107,19 +125,36 @@ describe('LandingPageClient — toggle de ciclo', () => {
     toggleAnnual()
 
     await waitFor(() => {
-      expect(screen.getByText(/billedAnnually:205/)).toBeInTheDocument()
+      expect(screen.getByText(/billedAnnually:\$205/)).toBeInTheDocument()
     })
-    expect(screen.getByText(/billedAnnually:854/)).toBeInTheDocument()
+    expect(screen.getByText(/billedAnnually:\$854/)).toBeInTheDocument()
     // Lookahead: sin él, /annualSaving:23/ también casaría con el 239 de enterprise.
-    expect(screen.getByText(/annualSaving:23(?!\d)/)).toBeInTheDocument()   // 228 − 205
-    expect(screen.getByText(/annualSaving:94(?!\d)/)).toBeInTheDocument()   // 948 − 854
-    expect(screen.getByText(/annualSaving:239/)).toBeInTheDocument()        // 2388 − 2149
+    expect(screen.getByText(/annualSaving:\$23(?!\d)/)).toBeInTheDocument()   // 228 − 205
+    expect(screen.getByText(/annualSaving:\$94(?!\d)/)).toBeInTheDocument()   // 948 − 854
+    expect(screen.getByText(/annualSaving:\$239/)).toBeInTheDocument()        // 2388 − 2149
   })
 
   it('Free no muestra precio anual (no lo tiene)', () => {
     render(<LandingPageClient />)
     toggleAnnual()
-    expect(screen.queryByText(/billedAnnually:0/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/billedAnnually:\$0/)).not.toBeInTheDocument()
+  })
+
+  it('en soles convierte los precios y avisa de que el cobro es en USD', () => {
+    useUiStore.setState({ currency: 'PEN' })
+
+    render(<LandingPageClient />)
+
+    expect(screen.getByText('S/ 296')).toBeInTheDocument()   // 79 × 3.75
+    expect(screen.getByText('S/ 746')).toBeInTheDocument()   // 199 × 3.75
+    expect(screen.getByText('common:priceNote')).toBeInTheDocument()
+  })
+
+  it('en dólares no anuncia ninguna conversión', () => {
+    render(<LandingPageClient />)
+
+    expect(screen.getByText('$79')).toBeInTheDocument()
+    expect(screen.queryByText('common:priceNote')).not.toBeInTheDocument()
   })
 })
 

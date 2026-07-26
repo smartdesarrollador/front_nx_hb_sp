@@ -4,6 +4,7 @@ import { Package, CreditCard, LifeBuoy, Users, ChevronRight, ArrowUpCircle, type
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 import type { DashboardSummary } from '../types'
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency'
 
 interface SummaryCardProps {
   icon: LucideIcon
@@ -105,6 +106,7 @@ interface SummaryCardsProps {
 
 export function SummaryCards({ summary, canManageBilling, onUpgradePlan }: SummaryCardsProps) {
   const { t } = useTranslation('dashboard')
+  const money = useDisplayCurrency()
   const { subscription, support, referrals, isLoading } = summary
 
   const planValue = subscription?.plan_display ?? '-'
@@ -112,7 +114,11 @@ export function SummaryCards({ summary, canManageBilling, onUpgradePlan }: Summa
     ? `Renovación: ${new Date(subscription.next_billing_date).toLocaleDateString('es-ES')}`
     : undefined
 
-  const billingValue = subscription ? `$${subscription.mrr}/mes` : '-'
+  // `value` es un string, así que aquí no sirve <Price>: se formatea con el hook.
+  // El sufijo salía siempre como "/mes" aunque la suscripción fuera anual.
+  const billingValue = subscription
+    ? `${money.amount(subscription.mrr)}/${subscription.billing_cycle === 'annual' ? 'año' : 'mes'}`
+    : '-'
   const canUpgrade = subscription?.plan !== 'enterprise'
 
   return (

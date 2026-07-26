@@ -3,6 +3,19 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import CurrentPlanCard from '@/features/subscription/components/CurrentPlanCard'
 import type { CurrentSubscription, RenewalState } from '@/features/subscription/types'
 
+// El hook real usa TanStack Query y estos tests montan sin QueryClientProvider.
+// Mockearlo explícitamente además evita que MSW deje pasar la petición en silencio
+// (onUnhandledRequest: 'bypass') y el test acabe pasando por la razón equivocada.
+vi.mock('@/hooks/useCurrencyConfig', () => ({
+  useCurrencyConfig: () => ({
+    penRate: 3.75,
+    defaultCurrency: 'USD',
+    isLoading: false,
+    isError: false,
+  }),
+}))
+
+
 function makeSubscription(overrides: Partial<CurrentSubscription> = {}): CurrentSubscription {
   return {
     id: 'sub-1',

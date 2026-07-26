@@ -16,6 +16,9 @@ import { usePlans } from '@/features/subscription/hooks/usePlans'
 import BillingCycleToggle from '@/features/subscription/components/BillingCycleToggle'
 import { annualDiscountPercent } from '@/features/subscription/plans-data'
 import type { BillingCycle } from '@/features/subscription/types'
+import { useCurrencyConfig } from '@/hooks/useCurrencyConfig'
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency'
+import { AMOUNT_DECIMALS, formatMoney } from '@/lib/currency'
 
 interface Props {
   paymentUploadToken: string
@@ -59,6 +62,8 @@ export default function YapePaymentStep({
   const [promoError, setPromoError] = useState<string | null>(null)
 
   const { data: yapeConfig, isLoading: configLoading } = useYapeConfig()
+  const { isLoading: rateLoading } = useCurrencyConfig()
+  const money = useDisplayCurrency()
   const { plans, isLoading: plansLoading } = usePlans()
   const tokenStatus = usePaymentTokenStatus(paymentUploadToken, verifyToken)
   const { mutateAsync, isPending, isError, error } = useUploadYapeProof()
@@ -74,15 +79,18 @@ export default function YapePaymentStep({
   const periodLabel = isAnnual ? 'año' : 'mes'
   // `null` cuando el plan no tiene ahorro anual → sin toggle que ofrecer.
   const cycleDiscount = planData ? annualDiscountPercent(planData) : null
-  const rate      = parseFloat(yapeConfig?.exchange_rate ?? '3.75')
-
   const amountUSD = applied?.final_price ?? planPrice
-  const amountPEN = applied
-    ? (applied.final_price_pen ?? amountUSD * rate).toFixed(2)
-    : (planPrice * rate).toFixed(2)
+  // El PEN es el importe exacto que se va a transferir, así que no sigue el switch de
+  // moneda: aquí siempre se muestran las dos. Con cupón manda el `final_price_pen`
+  // que calculó el backend — es el que espera ver en el comprobante.
+  // `null` si no hay tipo de cambio: antes un `?? '3.75'` pintaba un importe
+  // plausible y equivocado.
+  const amountPEN = applied?.final_price_pen != null
+    ? formatMoney(applied.final_price_pen, 'PEN', AMOUNT_DECIMALS)
+    : money.inCurrency(amountUSD, 'PEN', AMOUNT_DECIMALS)
   const isFreeWithPromo = applied !== null && applied.final_price === 0
 
-  const isLoadingData = configLoading || plansLoading
+  const isLoadingData = configLoading || plansLoading || rateLoading
 
   function handleFile(f: File) {
     if (!f.type.startsWith('image/')) return
@@ -308,11 +316,26 @@ export default function YapePaymentStep({
           <ol className="pl-4 space-y-1.5 text-sm text-purple-800 dark:text-purple-300 list-decimal">
             <li>Abre Yape en tu celular</li>
             <li>
-              Envía{' '}
-              <span className="font-bold text-purple-900 dark:text-purple-100">
-                S/ {amountPEN}
-              </span>{' '}
-              (aprox. ${amountUSD.toFixed(2)} USD) al número:
+              {amountPEN ? (
+                <>
+                  Envía{' '}
+                  <span className="font-bold text-purple-900 dark:text-purple-100">
+                    {amountPEN}
+                  </span>{' '}
+                  (aprox. ${amountUSD.toFixed(2)} USD) al número:
+                </>
+              ) : (
+                <>
+                  Envía{' '}
+                  <span className="font-bold text-purple-900 dark:text-purple-100">
+                    ${amountUSD.toFixed(2)} USD
+                  </span>{' '}
+                  al número:{' '}
+                  <span className="block text-xs mt-1 opacity-80">
+                    No pudimos calcular el importe en soles; usa el tipo de cambio de tu banco.
+                  </span>
+                </>
+              )}
             </li>
             <li className="font-mono font-bold text-base tracking-wider text-purple-900 dark:text-purple-100">
               {yapeConfig?.phone || '—'}
@@ -421,7 +444,7 @@ export default function YapePaymentStep({
                 Total: ${applied.final_price?.toFixed(2)} USD
                 {!isFreeWithPromo && (
                   <span className="font-normal text-gray-500 dark:text-gray-400">
-                    {' '}(S/ {amountPEN})
+                    {amountPEN && <>{' '}({amountPEN})</>}
                   </span>
                 )}
               </p>

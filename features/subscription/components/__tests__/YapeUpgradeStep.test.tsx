@@ -16,10 +16,21 @@ vi.mock('@/features/auth/hooks/useYapeConfig', () => ({
       is_enabled: true,
       phone: '999888777',
       holder_name: 'Titular Test',
-      exchange_rate: '3.75',
       instructions_note: '',
     },
     isLoading: false,
+  }),
+}))
+
+// El tipo de cambio ya no sale de la config de Yape sino de /public/currency/.
+const currency = vi.hoisted(() => ({ penRate: 3.75 as number | null }))
+
+vi.mock('@/hooks/useCurrencyConfig', () => ({
+  useCurrencyConfig: () => ({
+    penRate: currency.penRate,
+    defaultCurrency: 'USD',
+    isLoading: false,
+    isError: false,
   }),
 }))
 
@@ -52,6 +63,7 @@ function attachScreenshot() {
 describe('YapeUpgradeStep — ciclo de facturación', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    currency.penRate = 3.75
     mutateAsync.mockResolvedValue({ proof_id: 'p1', is_renewal: false, billing_cycle: 'monthly' })
   })
 
@@ -64,7 +76,7 @@ describe('YapeUpgradeStep — ciclo de facturación', () => {
 
   it('en anual usa el precio del año completo', () => {
     renderStep({ billingCycle: 'annual' })
-    expect(screen.getByText('S/ 3202.50')).toBeInTheDocument() // 854 * 3.75
+    expect(screen.getByText('S/ 3,202.50')).toBeInTheDocument() // 854 * 3.75
     expect(screen.getByText('anual')).toBeInTheDocument()
     expect(screen.getByText(/\$854\/año/)).toBeInTheDocument()
   })
@@ -103,5 +115,29 @@ describe('YapeUpgradeStep — ciclo de facturación', () => {
   it('rotula la renovación como un período más', () => {
     renderStep({ isRenewal: true, billingCycle: 'annual' })
     expect(screen.getByText(/renovar tu plan por 1 año más/)).toBeInTheDocument()
+  })
+
+  it('sin tipo de cambio pide el importe en dólares y avisa, en vez de inventar soles', () => {
+    // El `?? '3.75'` que había antes pintaba un importe plausible y equivocado.
+    currency.penRate = null
+    renderStep()
+
+    expect(screen.queryByText(/S\//)).not.toBeInTheDocument()
+    expect(screen.getByText('$79.00 USD')).toBeInTheDocument()
+    expect(screen.getByText(/tipo de cambio de tu banco/)).toBeInTheDocument()
+  })
+
+  it('con cupón manda el importe en soles que calculó el backend', async () => {
+    // 683.20 × 3.75 daría S/ 2562.00; el backend dice otra cosa y es la que vale.
+    validateAsync.mockResolvedValue({
+      valid: true, code: 'ANUAL20', final_price: 683.2, final_price_pen: 2500,
+    })
+    renderStep({ billingCycle: 'annual' })
+
+    fireEvent.click(screen.getByRole('button', { name: /código de descuento/ }))
+    fireEvent.change(screen.getByPlaceholderText('CODIGO'), { target: { value: 'ANUAL20' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+
+    expect(await screen.findByText('S/ 2,500.00')).toBeInTheDocument()
   })
 })

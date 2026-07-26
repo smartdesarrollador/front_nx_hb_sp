@@ -25,6 +25,8 @@ import {
   maxAnnualDiscount,
 } from '@/features/subscription/plans-data'
 import type { BillingCycle, PlanData } from '@/features/subscription/types'
+import Price from '@/components/shared/Price'
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency'
 
 const step1Schema = z
   .object({
@@ -59,17 +61,17 @@ const PAID_STEP_LABELS  = ['Cuenta', 'Empresa', 'Plan', 'Pago', '¡Listo!']
 function PlanPrice({ plan, billingCycle }: { plan: PlanData; billingCycle: BillingCycle }) {
   const isAnnual = billingCycle === 'annual' && plan.priceAnnual > 0
   if (!isAnnual) {
-    return <>${plan.priceMonthly}/mes</>
+    return <><Price usd={plan.priceMonthly} />/mes</>
   }
   const discount = annualDiscountPercent(plan)
   return (
     <span className="inline-flex flex-col items-end">
-      <span>${Math.round(plan.priceAnnual / MONTHS_PER_YEAR)}/mes</span>
+      <span><Price usd={Math.round(plan.priceAnnual / MONTHS_PER_YEAR)} />/mes</span>
       <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
-        ${plan.priceAnnual}/año
+        <Price usd={plan.priceAnnual} />/año
         {discount !== null && (
           <span className="text-green-600 dark:text-green-400">
-            {' '}· ahorras ${annualSavings(plan)}
+            {' '}· ahorras <Price usd={annualSavings(plan)} />
           </span>
         )}
       </span>
@@ -132,6 +134,7 @@ export default function RegisterPageClient() {
   const { mutateAsync: registerMutate, isPending } = useRegister()
   const { plans: allPlans } = usePlans()
   const annualDiscount = maxAnnualDiscount(allPlans)
+  const money = useDisplayCurrency()
 
   const STEP_LABELS = requiresPayment ? PAID_STEP_LABELS : FREE_STEP_LABELS
 
@@ -418,6 +421,11 @@ export default function RegisterPageClient() {
               </label>
             ))}
           </div>
+          {money.isConverted && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+              Los precios se cobran en USD. El importe en soles es referencial.
+            </p>
+          )}
           {registerError && (
             <div className="flex items-start gap-2 rounded-lg bg-red-50 dark:bg-red-900/20 p-3 text-sm text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800">
               <AlertCircle className="mt-0.5 w-4 h-4 flex-shrink-0" />

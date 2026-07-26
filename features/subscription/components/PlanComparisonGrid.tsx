@@ -4,6 +4,8 @@ import { Check, X } from 'lucide-react'
 import type { BillingCycle, PlanData, PlanType } from '../types'
 import { annualDiscountPercent, annualSavings, isUpgrade, maxAnnualDiscount, MONTHS_PER_YEAR } from '../plans-data'
 import BillingCycleToggle from './BillingCycleToggle'
+import Price from '@/components/shared/Price'
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency'
 
 interface PlanCardProps {
   plan: PlanData
@@ -49,13 +51,15 @@ function PlanCard({
         <h3 className="text-lg font-bold text-gray-900">{plan.displayName}</h3>
         <p className="text-sm text-gray-500 mt-1">{plan.description}</p>
         <div className="mt-3">
-          <span className="text-3xl font-bold text-gray-900">${price}</span>
+          <span className="text-3xl font-bold text-gray-900"><Price usd={price} /></span>
           <span className="text-gray-500 text-sm">/mes</span>
           {isAnnual && (
             <p className="text-xs text-gray-400 mt-1">
-              ${plan.priceAnnual}/año facturado de una vez
+              <Price usd={plan.priceAnnual} />/año facturado de una vez
               {discount !== null && (
-                <span className="text-green-600 font-medium"> · ahorras ${savings} (−{discount}%)</span>
+                <span className="text-green-600 font-medium">
+                  {' '}· ahorras <Price usd={savings} /> (−{discount}%)
+                </span>
               )}
             </p>
           )}
@@ -155,6 +159,18 @@ export default function PlanComparisonGrid({
           />
         ))}
       </div>
+      <CurrencyNote />
     </div>
+  )
+}
+
+/** Una sola vez bajo la grilla; dentro de cada tarjeta sería ruido. */
+function CurrencyNote() {
+  const money = useDisplayCurrency()
+  if (!money.isConverted) return null
+  return (
+    <p className="text-xs text-gray-400 text-center">
+      Los precios se cobran en USD. El importe en soles es referencial.
+    </p>
   )
 }

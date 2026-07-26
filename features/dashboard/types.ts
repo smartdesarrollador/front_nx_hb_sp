@@ -6,6 +6,8 @@ export interface SubscriptionSummary {
   status: 'active' | 'trial' | 'past_due' | 'cancelled'
   next_billing_date: string | null
   mrr: number
+  /** Ya venía en la respuesta (mismo endpoint que useCurrentSubscription); faltaba declararlo. */
+  billing_cycle: 'monthly' | 'annual'
   cancel_at_period_end: boolean
 }
 

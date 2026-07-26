@@ -26,6 +26,8 @@ import type { BillingCycle, PlanData } from '@/features/subscription/types'
 import { useLatestReleases } from '@/features/desktop/hooks/useLatestReleases'
 import { PlatformDownloadCard } from '@/features/desktop/components/PlatformDownloadCard'
 import type { ReleasePlatform } from '@/features/desktop/types'
+import Price from '@/components/shared/Price'
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency'
 import LandingNavbar from '@/components/shared/LandingNavbar'
 import LandingFooter from '@/components/shared/LandingFooter'
 import ContactSection from '@/features/contact/ContactSection'
@@ -67,6 +69,7 @@ export default function LandingPageClient() {
   const catalogItems = useLandingCatalog()
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly')
   const annualDiscount = maxAnnualDiscount(plans)
+  const money = useDisplayCurrency()
 
   /**
    * Destino del CTA de cada plan. El ciclo viaja en la URL porque el registro ya lo
@@ -373,10 +376,15 @@ export default function LandingPageClient() {
 
                   <div className="mb-8">
                     <span className={`text-4xl font-bold ${plan.popular ? 'text-white' : 'text-[#0B2740] dark:text-[#EAF1F8]'}`}>
-                      $
-                      {billingCycle === 'annual' && plan.priceAnnual > 0
-                        ? Math.round(plan.priceAnnual / MONTHS_PER_YEAR)
-                        : plan.priceMonthly}
+                      {/* Se redondea en USD y se convierte después, para que el importe
+                          en soles sea exactamente la conversión del que se ve en dólares. */}
+                      <Price
+                        usd={
+                          billingCycle === 'annual' && plan.priceAnnual > 0
+                            ? Math.round(plan.priceAnnual / MONTHS_PER_YEAR)
+                            : plan.priceMonthly
+                        }
+                      />
                     </span>
                     <span className={`text-sm ml-1 ${plan.popular ? 'text-primary-200' : 'text-[rgba(11,39,64,0.45)] dark:text-[rgba(234,241,248,0.50)]'}`}>
                       {t('perMonth')}
@@ -385,11 +393,11 @@ export default function LandingPageClient() {
                       // En la tarjeta "popular" el fondo es azul: el verde no se lee,
                       // así que ahí el ahorro va en el claro de la propia paleta.
                       <p className={`text-xs mt-2 ${plan.popular ? 'text-primary-200' : 'text-[rgba(11,39,64,0.45)] dark:text-[rgba(234,241,248,0.50)]'}`}>
-                        {t('billedAnnually', { total: plan.priceAnnual })}
+                        {t('billedAnnually', { total: money.catalog(plan.priceAnnual) })}
                         {annualDiscountPercent(plan) !== null && (
                           <span className={plan.popular ? 'text-primary-100 font-medium' : 'text-green-600 dark:text-green-400 font-medium'}>
                             {' · '}
-                            {t('annualSaving', { amount: annualSavings(plan) })}
+                            {t('annualSaving', { amount: money.catalog(annualSavings(plan)) })}
                           </span>
                         )}
                       </p>
@@ -427,6 +435,14 @@ export default function LandingPageClient() {
               </div>
             ))}
           </div>
+
+          {/* Una sola vez bajo la grilla, no una por tarjeta: repetirlo cuatro veces es
+              ruido, y meterlo dentro de la tarjeta rompería el helper de sus tests. */}
+          {money.isConverted && (
+            <p className="text-center text-xs text-[rgba(11,39,64,0.45)] dark:text-[rgba(234,241,248,0.50)] mt-8">
+              {t('common:priceNote')}
+            </p>
+          )}
         </div>
       </section>
 

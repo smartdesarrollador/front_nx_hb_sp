@@ -7,6 +7,7 @@ import { teamHandlers } from './team.handlers'
 import { notificationsHandlers } from './notifications.handlers'
 import { referralsHandlers } from './referrals.handlers'
 import { supportHandlers } from './support.handlers'
+import { currencyHandlers } from './currency.handlers'
 
 export const handlers = [
   ...authHandlers,
@@ -18,4 +19,5 @@ export const handlers = [
   ...notificationsHandlers,
   ...referralsHandlers,
   ...supportHandlers,
+  ...currencyHandlers,
 ]

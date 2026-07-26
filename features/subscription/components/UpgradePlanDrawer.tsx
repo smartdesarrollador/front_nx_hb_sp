@@ -3,8 +3,9 @@
 import { useState } from 'react'
 import { X, ArrowLeft, Check } from 'lucide-react'
 import type { BillingCycle, PlanData, PlanType } from '../types'
-import { isUpgrade } from '../plans-data'
+import { isUpgrade, MONTHS_PER_YEAR } from '../plans-data'
 import YapeUpgradeStep from './YapeUpgradeStep'
+import Price from '@/components/shared/Price'
 
 interface Props {
   plans: PlanData[]
@@ -117,7 +118,16 @@ export default function UpgradePlanDrawer({
                           )}
                         </div>
                         <span className="text-lg font-bold text-gray-900 dark:text-white">
-                          ${plan.priceMonthly}
+                          {/* Antes pintaba siempre el mensual mientras el paso de pago
+                              cobraba el anual: quien elegía Anual veía un precio y
+                              transfería otro. */}
+                          <Price
+                            usd={
+                              billingCycle === 'annual' && plan.priceAnnual > 0
+                                ? Math.round(plan.priceAnnual / MONTHS_PER_YEAR)
+                                : plan.priceMonthly
+                            }
+                          />
                           <span className="text-sm font-normal text-gray-500">/mes</span>
                         </span>
                       </div>

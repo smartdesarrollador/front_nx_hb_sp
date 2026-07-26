@@ -2,6 +2,19 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import RegisterPageClient from '@/features/auth/RegisterPageClient'
 
+// El hook real usa TanStack Query y estos tests montan sin QueryClientProvider.
+// Mockearlo explícitamente además evita que MSW deje pasar la petición en silencio
+// (onUnhandledRequest: 'bypass') y el test acabe pasando por la razón equivocada.
+vi.mock('@/hooks/useCurrencyConfig', () => ({
+  useCurrencyConfig: () => ({
+    penRate: 3.75,
+    defaultCurrency: 'USD',
+    isLoading: false,
+    isError: false,
+  }),
+}))
+
+
 let searchParams = new URLSearchParams()
 
 vi.mock('next/navigation', () => ({
@@ -77,7 +90,8 @@ async function goToPlanStep() {
  */
 function toggle(cycle: 'monthly' | 'annual') {
   return screen.getByRole('button', {
-    name: cycle === 'monthly' ? /billingMonthly/ : /billingAnnual/,
+    // Etiquetas reales: el componente importa el store de UI, que inicializa i18n.
+    name: cycle === 'monthly' ? /Mensual/ : /Anual/,
   })
 }
 
@@ -96,7 +110,7 @@ describe('RegisterPageClient — toggle de ciclo en el paso 3', () => {
 
     expect(toggle('monthly')).toBeInTheDocument()
     // starter 19→205 = 10%; professional 79→854 = 10%
-    expect(toggle('annual')).toHaveTextContent('billingAnnualDiscount')
+    expect(toggle('annual')).toHaveTextContent('hasta')
   })
 
   it('arranca en mensual y muestra los precios mensuales', async () => {
@@ -140,7 +154,7 @@ describe('RegisterPageClient — toggle de ciclo en el paso 3', () => {
 
     await goToPlanStep()
 
-    expect(screen.queryByRole('button', { name: /billingMonthly/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Mensual/ })).not.toBeInTheDocument()
     expect(screen.getByText('Gratis →')).toBeInTheDocument()
   })
 

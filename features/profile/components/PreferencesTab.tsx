@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useUiStore } from '@/store/uiStore'
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency'
+import type { Currency } from '@/lib/currency'
 
 const TIMEZONES = [
   { value: 'America/Mexico_City', label: 'tz1' },
@@ -18,6 +20,8 @@ function PreferencesTab() {
   const setLanguage = useUiStore((s) => s.setLanguage)
   const darkMode = useUiStore((s) => s.darkMode)
   const toggleDarkMode = useUiStore((s) => s.toggleDarkMode)
+  const setCurrency = useUiStore((s) => s.setCurrency)
+  const money = useDisplayCurrency()
   const [timezone, setTimezone] = useState('America/Mexico_City')
 
   return (
@@ -40,6 +44,27 @@ function PreferencesTab() {
             <option value="en">{t('langEn')}</option>
           </select>
         </div>
+
+        {/* Aquí lo busca quien cambió la moneda en la landing y no la encuentra dentro
+            de la app. Se oculta si no hay tipo de cambio: sin él la elección no se
+            puede honrar. */}
+        {money.penRate !== null && (
+          <div>
+            <label htmlFor="currency" className="block text-sm font-medium text-gray-700">
+              {t('currencyField')}
+            </label>
+            <select
+              id="currency"
+              value={money.currency}
+              onChange={(e) => setCurrency(e.target.value as Currency)}
+              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            >
+              <option value="USD">USD ($)</option>
+              <option value="PEN">PEN (S/)</option>
+            </select>
+            <p className="mt-1 text-xs text-gray-500">{t('currencyHelp')}</p>
+          </div>
+        )}
 
         <div>
           <label htmlFor="timezone" className="block text-sm font-medium text-gray-700">

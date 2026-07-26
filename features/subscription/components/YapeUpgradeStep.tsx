@@ -5,6 +5,8 @@ import { Upload, X, AlertCircle, Smartphone, Tag, Loader2 } from 'lucide-react'
 import { useYapeUpgrade } from '../hooks/useYapeUpgrade'
 import type { BillingCycle } from '../types'
 import { useYapeConfig } from '@/features/auth/hooks/useYapeConfig'
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency'
+import { AMOUNT_DECIMALS, formatMoney } from '@/lib/currency'
 import {
   PROMO_REASON_MESSAGES,
   useValidatePromotion,
@@ -40,6 +42,7 @@ export default function YapeUpgradeStep({
   const [promoError, setPromoError] = useState<string | null>(null)
 
   const { data: yapeConfig, isLoading: configLoading } = useYapeConfig()
+  const money = useDisplayCurrency()
   const { mutateAsync, isPending, isError, error } = useYapeUpgrade()
   const validatePromo = useValidatePromotion()
 
@@ -50,11 +53,14 @@ export default function YapeUpgradeStep({
   const basePrice  = isAnnual ? priceAnnual : priceMonthly
   const periodLabel = isAnnual ? 'año' : 'mes'
 
-  const rate      = parseFloat(yapeConfig?.exchange_rate ?? '3.75')
   const amountUSD = applied?.final_price ?? basePrice
-  const amountPEN = applied
-    ? (applied.final_price_pen ?? amountUSD * rate).toFixed(2)
-    : (basePrice * rate).toFixed(2)
+  // El PEN es el importe exacto a transferir, así que no sigue el switch de moneda:
+  // aquí siempre se muestran las dos. Con cupón manda el `final_price_pen` del
+  // backend. `null` si no hay tipo de cambio — antes un `?? '3.75'` pintaba un
+  // importe plausible y equivocado.
+  const amountPEN = applied?.final_price_pen != null
+    ? formatMoney(applied.final_price_pen, 'PEN', AMOUNT_DECIMALS)
+    : money.inCurrency(amountUSD, 'PEN', AMOUNT_DECIMALS)
 
   function handleFile(f: File) {
     if (!f.type.startsWith('image/')) return
@@ -170,11 +176,26 @@ export default function YapeUpgradeStep({
           <ol className="pl-4 space-y-1.5 text-sm text-purple-800 dark:text-purple-300 list-decimal">
             <li>Abre Yape en tu celular</li>
             <li>
-              Envía{' '}
-              <span className="font-bold text-purple-900 dark:text-purple-100">
-                S/ {amountPEN}
-              </span>{' '}
-              (aprox. ${amountUSD.toFixed(2)} USD) al número:
+              {amountPEN ? (
+                <>
+                  Envía{' '}
+                  <span className="font-bold text-purple-900 dark:text-purple-100">
+                    {amountPEN}
+                  </span>{' '}
+                  (aprox. ${amountUSD.toFixed(2)} USD) al número:
+                </>
+              ) : (
+                <>
+                  Envía{' '}
+                  <span className="font-bold text-purple-900 dark:text-purple-100">
+                    ${amountUSD.toFixed(2)} USD
+                  </span>{' '}
+                  al número:{' '}
+                  <span className="block text-xs mt-1 opacity-80">
+                    No pudimos calcular el importe en soles; usa el tipo de cambio de tu banco.
+                  </span>
+                </>
+              )}
             </li>
             <li className="font-mono font-bold text-base tracking-wider text-purple-900 dark:text-purple-100">
               {yapeConfig?.phone || '—'}
@@ -280,7 +301,7 @@ export default function YapeUpgradeStep({
               <p className="font-semibold text-gray-900 dark:text-white">
                 Total: ${applied.final_price?.toFixed(2)} USD
                 <span className="font-normal text-gray-500 dark:text-gray-400">
-                  {' '}(S/ {amountPEN})
+                  {amountPEN && <>{' '}({amountPEN})</>}
                 </span>
               </p>
             </div>

@@ -21,7 +21,7 @@ export interface PromoValidationResult {
   original_price?: number
   discount_amount?: number
   final_price?: number
-  exchange_rate?: string
+  /** El backend ya devuelve el importe convertido; su `exchange_rate` no se consume. */
   final_price_pen?: number
 }
 

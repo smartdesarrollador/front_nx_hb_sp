@@ -1,6 +1,7 @@
 'use client'
 
 import type { CurrentSubscription, PlanType, RenewalState } from '../types'
+import Price from '@/components/shared/Price'
 
 const PLAN_LABELS: Record<PlanType, string> = {
   free: 'Free',
@@ -228,7 +229,8 @@ export default function CurrentPlanCard({
             Facturación {subscription.billing_cycle === 'annual' ? 'anual' : 'mensual'}
           </p>
           <p className="font-medium">
-            ${subscription.mrr.toFixed(2)}/{subscription.billing_cycle === 'annual' ? 'año' : 'mes'}
+            <Price usd={subscription.mrr} kind="amount" />/
+            {subscription.billing_cycle === 'annual' ? 'año' : 'mes'}
           </p>
         </div>
       </div>

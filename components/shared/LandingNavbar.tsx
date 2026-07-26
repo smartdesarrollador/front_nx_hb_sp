@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Building2, Menu, X } from 'lucide-react'
 import { useUiStore } from '@/store/uiStore'
+import CurrencySwitch from '@/components/shared/CurrencySwitch'
 import { publicClient } from '@/lib/axios'
 
 const SUBDOMAIN = process.env.NEXT_PUBLIC_TENANT_SUBDOMAIN as string | undefined
@@ -117,6 +118,7 @@ export default function LandingNavbar({ navLinks = [] }: LandingNavbarProps) {
               EN
             </button>
           </div>
+          <CurrencySwitch />
           <button
             onClick={() => router.push('/login')}
             className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm shadow-primary-600/30"
@@ -168,6 +170,7 @@ export default function LandingNavbar({ navLinks = [] }: LandingNavbarProps) {
             >
               EN
             </button>
+            <CurrencySwitch />
           </div>
           <button
             onClick={() => router.push('/login')}
