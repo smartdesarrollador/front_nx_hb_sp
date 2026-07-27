@@ -6,7 +6,7 @@ import { renderHookWithProviders } from '@/test/utils'
 import { useActivateFreePlan } from '@/features/auth/hooks/useActivateFreePlan'
 
 const API = 'http://localhost:8000'
-const ACTIVATE_URL = `${API}/api/v1/auth/yape-activate-free`
+const ACTIVATE_URL = `${API}/api/v1/auth/activate-free-plan`
 
 describe('useActivateFreePlan', () => {
   it('envía token, plan y cupón; recibe activated:true', async () => {

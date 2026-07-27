@@ -5,7 +5,7 @@ import { apiClient } from '@/lib/axios'
 
 import type { BillingCycle } from '../types'
 
-interface YapeUpgradeRequest {
+interface UpgradePaymentRequest {
   plan: string
   screenshot: File
   /** Método elegido. El backend lo valida contra los habilitados; default: yape. */
@@ -16,7 +16,7 @@ interface YapeUpgradeRequest {
   billing_cycle?: BillingCycle
 }
 
-interface YapeUpgradeResponse {
+interface UpgradePaymentResponse {
   message: string
   proof_id: string
   /** true si se pagó el plan que ya se tenía (renovación) en vez de un plan superior. */
@@ -29,7 +29,7 @@ export const PENDING_PROOF_MESSAGE =
 
 // El monto NO se envía: el backend lo calcula siempre en servidor
 // (precio del plan y ciclo, menos el descuento del cupón si lo hay).
-async function submitYapeUpgrade(data: YapeUpgradeRequest): Promise<YapeUpgradeResponse> {
+async function submitUpgradePayment(data: UpgradePaymentRequest): Promise<UpgradePaymentResponse> {
   const form = new FormData()
   form.append('plan', data.plan)
   form.append('screenshot', data.screenshot)
@@ -48,10 +48,10 @@ async function submitYapeUpgrade(data: YapeUpgradeRequest): Promise<YapeUpgradeR
   // Trailing slash requerido: en producción NEXT_PUBLIC_API_URL apunta directo al
   // dominio del backend (sin pasar por el rewrite de next.config.ts que en dev
   // agrega la barra), así que debe coincidir exacto con el path de Django
-  // (`yape-upgrade/`) o Django responde 500/405 vía APPEND_SLASH (ver LL-001/LL-005).
+  // (`plan-upgrade/`) o Django responde 500/405 vía APPEND_SLASH (ver LL-001/LL-005).
   try {
-    const { data: response } = await apiClient.post<YapeUpgradeResponse>(
-      '/admin/subscriptions/yape-upgrade/',
+    const { data: response } = await apiClient.post<UpgradePaymentResponse>(
+      '/admin/subscriptions/plan-upgrade/',
       form,
       { headers: { 'Content-Type': undefined } },
     )
@@ -68,10 +68,10 @@ async function submitYapeUpgrade(data: YapeUpgradeRequest): Promise<YapeUpgradeR
   }
 }
 
-export function useYapeUpgrade() {
+export function useUpgradePayment() {
   const queryClient = useQueryClient()
-  return useMutation<YapeUpgradeResponse, Error, YapeUpgradeRequest>({
-    mutationFn: submitYapeUpgrade,
+  return useMutation<UpgradePaymentResponse, Error, UpgradePaymentRequest>({
+    mutationFn: submitUpgradePayment,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['hub-subscription'] })
     },

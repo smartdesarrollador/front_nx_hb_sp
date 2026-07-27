@@ -4,25 +4,25 @@ import { useState } from 'react'
 import { X, ArrowLeft, Check } from 'lucide-react'
 import type { BillingCycle, PlanData, PlanType } from '../types'
 import { isUpgrade, MONTHS_PER_YEAR } from '../plans-data'
-import YapeUpgradeStep from './YapeUpgradeStep'
+import UpgradePaymentStep from './UpgradePaymentStep'
 import Price from '@/components/shared/Price'
 
 interface Props {
   plans: PlanData[]
   currentPlan: PlanType
-  /** Si se pasa, salta el paso de selección y abre directo en 'yape' para ese plan. */
+  /** Si se pasa, salta el paso de selección y abre directo en el pago para ese plan. */
   initialPlan?: PlanType
   /** Ciclo elegido en el toggle. Determina precio y duración del período (30 / 365 d). */
   billingCycle?: BillingCycle
   onClose: () => void
 }
 
-type Step = 'select' | 'yape' | 'success'
+type Step = 'select' | 'payment' | 'success'
 
 export default function UpgradePlanDrawer({
   plans, currentPlan, initialPlan, billingCycle = 'monthly', onClose,
 }: Props) {
-  const [step, setStep]               = useState<Step>(initialPlan ? 'yape' : 'select')
+  const [step, setStep]               = useState<Step>(initialPlan ? 'payment' : 'select')
   const [selectedPlan, setSelectedPlan] = useState<PlanType | null>(initialPlan ?? null)
 
   // Renovación = pagar el plan que ya se tiene. Comparte endpoint y flujo con el upgrade
@@ -34,7 +34,7 @@ export default function UpgradePlanDrawer({
 
   function handleSelectPlan(plan: PlanType) {
     setSelectedPlan(plan)
-    setStep('yape')
+    setStep('payment')
   }
 
   function handleSuccess() {
@@ -60,7 +60,7 @@ export default function UpgradePlanDrawer({
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-900 z-10">
           <div className="flex items-center gap-3">
-            {step === 'yape' && (
+            {step === 'payment' && (
               <button
                 onClick={() => setStep('select')}
                 className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -71,7 +71,7 @@ export default function UpgradePlanDrawer({
             )}
             <h2 className="text-lg font-bold text-gray-900 dark:text-white">
               {step === 'select' && 'Elige tu nuevo plan'}
-              {step === 'yape' && (isRenewal ? 'Renovar tu plan' : 'Confirmar pago con Yape')}
+              {step === 'payment' && (isRenewal ? 'Renovar tu plan' : 'Confirmar el pago')}
               {step === 'success' && '¡Comprobante enviado!'}
             </h2>
           </div>
@@ -149,8 +149,8 @@ export default function UpgradePlanDrawer({
             </div>
           )}
 
-          {step === 'yape' && selectedPlan && (
-            <YapeUpgradeStep
+          {step === 'payment' && selectedPlan && (
+            <UpgradePaymentStep
               plan={selectedPlan}
               priceMonthly={selectedPlanData?.priceMonthly ?? 0}
               priceAnnual={selectedPlanData?.priceAnnual ?? 0}

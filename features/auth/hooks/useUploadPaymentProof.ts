@@ -5,7 +5,7 @@ import { publicClient } from '@/lib/axios'
 
 import type { BillingCycle } from '@/features/subscription/types'
 
-interface UploadYapeProofRequest {
+interface UploadPaymentProofRequest {
   payment_upload_token: string
   screenshot: File
   plan: string
@@ -18,7 +18,7 @@ interface UploadYapeProofRequest {
   billing_cycle?: BillingCycle
 }
 
-interface UploadYapeProofResponse {
+interface UploadPaymentProofResponse {
   message: string
   proof_id: string
   billing_cycle: BillingCycle
@@ -26,7 +26,7 @@ interface UploadYapeProofResponse {
 
 // El monto NO se envía: el backend lo calcula siempre en servidor
 // (precio del plan y ciclo, menos el descuento del cupón si lo hay).
-async function uploadYapeProof(data: UploadYapeProofRequest): Promise<UploadYapeProofResponse> {
+async function uploadPaymentProof(data: UploadPaymentProofRequest): Promise<UploadPaymentProofResponse> {
   const form = new FormData()
   form.append('payment_upload_token', data.payment_upload_token)
   form.append('screenshot', data.screenshot)
@@ -43,16 +43,16 @@ async function uploadYapeProof(data: UploadYapeProofRequest): Promise<UploadYape
   if (data.billing_cycle) {
     form.append('billing_cycle', data.billing_cycle)
   }
-  const { data: response } = await publicClient.post<UploadYapeProofResponse>(
-    '/auth/yape-payment-proof',
+  const { data: response } = await publicClient.post<UploadPaymentProofResponse>(
+    '/auth/payment-proof',
     form,
     { headers: { 'Content-Type': undefined } },
   )
   return response
 }
 
-export function useUploadYapeProof() {
-  return useMutation<UploadYapeProofResponse, Error, UploadYapeProofRequest>({
-    mutationFn: uploadYapeProof,
+export function useUploadPaymentProof() {
+  return useMutation<UploadPaymentProofResponse, Error, UploadPaymentProofRequest>({
+    mutationFn: uploadPaymentProof,
   })
 }

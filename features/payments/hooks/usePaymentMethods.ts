@@ -12,7 +12,7 @@ interface PaymentMethodsResponse {
  * Métodos por los que se puede pagar ahora mismo, en el orden que fija el Admin.
  *
  * Va por `publicClient` porque el paso de pago del **registro** ocurre antes de que
- * exista sesión. Sustituye a `useYapeConfig`: la lista ya trae los datos de Yape, y
+ * exista sesión. Sustituyó a la config pública de Yape: la lista ya trae sus datos, y
  * además excluye los métodos que el admin dejó a medio configurar — ofrecer un método
  * sin destino de pago lleva al cliente hasta el final del flujo para nada.
  */

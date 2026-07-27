@@ -23,7 +23,7 @@ interface ActivateFreePlanResponse {
 
 async function activateFreePlan(data: ActivateFreePlanRequest): Promise<ActivateFreePlanResponse> {
   const { data: response } = await publicClient.post<ActivateFreePlanResponse>(
-    '/auth/yape-activate-free',
+    '/auth/activate-free-plan',
     data,
   )
   return response

@@ -1,16 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import YapeUpgradeStep from '@/features/subscription/components/YapeUpgradeStep'
+import UpgradePaymentStep from '@/features/subscription/components/UpgradePaymentStep'
 
 const mutateAsync = vi.fn()
 const validateAsync = vi.fn()
 
-vi.mock('@/features/subscription/hooks/useYapeUpgrade', () => ({
-  useYapeUpgrade: () => ({ mutateAsync, isPending: false, isError: false, error: null }),
+vi.mock('@/features/subscription/hooks/useUpgradePayment', () => ({
+  useUpgradePayment: () => ({ mutateAsync, isPending: false, isError: false, error: null }),
   PENDING_PROOF_MESSAGE: 'pending',
 }))
 
-// Los métodos de pago ya no salen de la config de Yape sino del catálogo público:
+// Los métodos de pago salen del catálogo público:
 // la fila `yape` llega ahí con su `charge_currency`.
 const methods = vi.hoisted(() => ({
   list: [
@@ -26,7 +26,7 @@ vi.mock('@/features/payments/hooks/usePaymentMethods', () => ({
   usePaymentMethods: () => ({ methods: methods.list, isLoading: false, isError: false }),
 }))
 
-// El tipo de cambio ya no sale de la config de Yape sino de /public/currency/.
+// El tipo de cambio sale de /public/currency/.
 const currency = vi.hoisted(() => ({ penRate: 3.75 as number | null }))
 
 vi.mock('@/hooks/useCurrencyConfig', () => ({
@@ -43,10 +43,10 @@ vi.mock('@/features/auth/hooks/useValidatePromotion', () => ({
   PROMO_REASON_MESSAGES: { invalid: 'El código no es válido.' },
 }))
 
-function renderStep(props: Partial<React.ComponentProps<typeof YapeUpgradeStep>> = {}) {
+function renderStep(props: Partial<React.ComponentProps<typeof UpgradePaymentStep>> = {}) {
   const onSuccess = vi.fn()
   render(
-    <YapeUpgradeStep
+    <UpgradePaymentStep
       plan="professional"
       priceMonthly={79}
       priceAnnual={854}
@@ -64,7 +64,7 @@ function attachScreenshot() {
   fireEvent.change(input, { target: { files: [file] } })
 }
 
-describe('YapeUpgradeStep — ciclo de facturación', () => {
+describe('UpgradePaymentStep — ciclo de facturación', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     currency.penRate = 3.75

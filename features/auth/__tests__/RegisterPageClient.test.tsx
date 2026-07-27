@@ -41,10 +41,10 @@ vi.mock('@/features/auth/components/GoogleOAuthButton', () => ({
 // Captura las props con las que el wizard monta el paso de pago: es donde se comprueba
 // que el ciclo elegido llega al cobro.
 const paymentStepProps = vi.fn()
-vi.mock('@/features/auth/components/YapePaymentStep', () => ({
+vi.mock('@/features/auth/components/PaymentStep', () => ({
   default: (props: Record<string, unknown>) => {
     paymentStepProps(props)
-    return <div data-testid="yape-step" />
+    return <div data-testid="payment-step" />
   },
 }))
 
@@ -169,7 +169,7 @@ describe('RegisterPageClient — toggle de ciclo en el paso 3', () => {
     fireEvent.click(toggle('annual'))
     fireEvent.click(screen.getByRole('button', { name: /Crear cuenta/i }))
 
-    await screen.findByTestId('yape-step')
+    await screen.findByTestId('payment-step')
     expect(paymentStepProps).toHaveBeenCalledWith(
       expect.objectContaining({ plan: 'professional', billingCycle: 'annual' }),
     )
@@ -185,7 +185,7 @@ describe('RegisterPageClient — toggle de ciclo en el paso 3', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Crear cuenta/i }))
 
-    await screen.findByTestId('yape-step')
+    await screen.findByTestId('payment-step')
     expect(paymentStepProps).toHaveBeenCalledWith(
       expect.objectContaining({ billingCycle: 'monthly' }),
     )
@@ -218,7 +218,7 @@ describe('RegisterPageClient — recuperar el paso de pago', () => {
     fireEvent.click(toggle('annual'))
     fireEvent.click(screen.getByRole('button', { name: /Crear cuenta/i }))
 
-    await screen.findByTestId('yape-step')
+    await screen.findByTestId('payment-step')
     expect(saved()).toMatchObject({
       token: 'tok-abc',
       plan: 'professional',
@@ -244,7 +244,7 @@ describe('RegisterPageClient — recuperar el paso de pago', () => {
 
     render(<RegisterPageClient />)
 
-    await screen.findByTestId('yape-step')
+    await screen.findByTestId('payment-step')
     expect(paymentStepProps).toHaveBeenLastCalledWith(
       expect.objectContaining({
         paymentUploadToken: 'tok-restaurado',
@@ -266,7 +266,7 @@ describe('RegisterPageClient — recuperar el paso de pago', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Crear cuenta/i }))
 
-    await screen.findByTestId('yape-step')
+    await screen.findByTestId('payment-step')
     expect(paymentStepProps).toHaveBeenLastCalledWith(
       expect.objectContaining({ verifyToken: false }),
     )
@@ -278,7 +278,7 @@ describe('RegisterPageClient — recuperar el paso de pago', () => {
       email: 'a@test.com', organizationName: 'Org', savedAt: Date.now(),
     }))
     render(<RegisterPageClient />)
-    await screen.findByTestId('yape-step')
+    await screen.findByTestId('payment-step')
 
     const props = paymentStepProps.mock.calls.at(-1)![0] as {
       onBillingCycleChange: (c: string) => void
@@ -294,7 +294,7 @@ describe('RegisterPageClient — recuperar el paso de pago', () => {
       email: 'a@test.com', organizationName: 'Org', savedAt: Date.now(),
     }))
     render(<RegisterPageClient />)
-    await screen.findByTestId('yape-step')
+    await screen.findByTestId('payment-step')
 
     const props = paymentStepProps.mock.calls.at(-1)![0] as { onSuccess: () => void }
     props.onSuccess()

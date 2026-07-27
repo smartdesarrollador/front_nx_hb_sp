@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import YapePaymentStep from '@/features/auth/components/YapePaymentStep'
+import PaymentStep from '@/features/auth/components/PaymentStep'
 
 const uploadProof = vi.fn()
 const activateFree = vi.fn()
 const validatePromo = vi.fn()
 
-vi.mock('@/features/auth/hooks/useUploadYapeProof', () => ({
-  useUploadYapeProof: () => ({
+vi.mock('@/features/auth/hooks/useUploadPaymentProof', () => ({
+  useUploadPaymentProof: () => ({
     mutateAsync: uploadProof, isPending: false, isError: false, error: null,
   }),
 }))
@@ -68,9 +68,9 @@ vi.mock('@/features/subscription/hooks/usePlans', () => ({
   }),
 }))
 
-function renderStep(props: Partial<React.ComponentProps<typeof YapePaymentStep>> = {}) {
+function renderStep(props: Partial<React.ComponentProps<typeof PaymentStep>> = {}) {
   render(
-    <YapePaymentStep
+    <PaymentStep
       paymentUploadToken="tok-1"
       plan="professional"
       billingCycle="monthly"
@@ -88,7 +88,7 @@ function attachScreenshot() {
   })
 }
 
-describe('YapePaymentStep (registro) — ciclo de facturación', () => {
+describe('PaymentStep (registro) — ciclo de facturación', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     uploadProof.mockResolvedValue({ proof_id: 'p1', billing_cycle: 'monthly' })
@@ -158,7 +158,7 @@ describe('YapePaymentStep (registro) — ciclo de facturación', () => {
   })
 })
 
-describe('YapePaymentStep (registro) — cambiar el ciclo en el propio paso de pago', () => {
+describe('PaymentStep (registro) — cambiar el ciclo en el propio paso de pago', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     uploadProof.mockResolvedValue({ proof_id: 'p1', billing_cycle: 'monthly' })
@@ -196,7 +196,7 @@ describe('YapePaymentStep (registro) — cambiar el ciclo en el propio paso de p
 
   it('el importe mostrado sigue al ciclo recibido', () => {
     const { rerender } = render(
-      <YapePaymentStep
+      <PaymentStep
         paymentUploadToken="tok-1" plan="professional" billingCycle="annual"
         onBillingCycleChange={vi.fn()} onSuccess={vi.fn()} onActivated={vi.fn()}
       />,
@@ -204,7 +204,7 @@ describe('YapePaymentStep (registro) — cambiar el ciclo en el propio paso de p
     expect(screen.getByText(/S\/\s*3,202\.50/)).toBeInTheDocument()
 
     rerender(
-      <YapePaymentStep
+      <PaymentStep
         paymentUploadToken="tok-1" plan="professional" billingCycle="monthly"
         onBillingCycleChange={vi.fn()} onSuccess={vi.fn()} onActivated={vi.fn()}
       />,
@@ -263,13 +263,13 @@ describe('YapePaymentStep (registro) — cambiar el ciclo en el propio paso de p
   it('el comprobante se envía con el ciclo cambiado, no con el inicial', async () => {
     // El wizard es la fuente de verdad: al cambiar re-renderiza con el ciclo nuevo.
     const { rerender } = render(
-      <YapePaymentStep
+      <PaymentStep
         paymentUploadToken="tok-1" plan="professional" billingCycle="annual"
         onBillingCycleChange={vi.fn()} onSuccess={vi.fn()} onActivated={vi.fn()}
       />,
     )
     rerender(
-      <YapePaymentStep
+      <PaymentStep
         paymentUploadToken="tok-1" plan="professional" billingCycle="monthly"
         onBillingCycleChange={vi.fn()} onSuccess={vi.fn()} onActivated={vi.fn()}
       />,
@@ -285,7 +285,7 @@ describe('YapePaymentStep (registro) — cambiar el ciclo en el propio paso de p
   })
 })
 
-describe('YapePaymentStep (registro) — token muerto al volver al paso de pago', () => {
+describe('PaymentStep (registro) — token muerto al volver al paso de pago', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     tokenStatus.mockReturnValue({ data: { valid: true, expires_in: 86400 } })

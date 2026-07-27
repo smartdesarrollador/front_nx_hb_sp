@@ -1,7 +1,7 @@
 'use client'
 
 import { PartyPopper } from 'lucide-react'
-import { useUploadYapeProof } from '@/features/auth/hooks/useUploadYapeProof'
+import { useUploadPaymentProof } from '@/features/auth/hooks/useUploadPaymentProof'
 import { usePaymentTokenStatus } from '@/features/auth/hooks/usePaymentTokenStatus'
 import { useActivateFreePlan } from '@/features/auth/hooks/useActivateFreePlan'
 import { usePlans } from '@/features/subscription/hooks/usePlans'
@@ -41,14 +41,14 @@ interface Props {
  * propio de este camino: el token de subida, el toggle de ciclo (que obliga a revalidar
  * el cupón) y la activación directa cuando un cupón cubre el 100%.
  */
-export default function YapePaymentStep({
+export default function PaymentStep({
   paymentUploadToken, plan, billingCycle = 'monthly', onBillingCycleChange,
   verifyToken = false, onSuccess, onActivated,
 }: Props) {
   const { plans, isLoading: plansLoading } = usePlans()
   const { isLoading: rateLoading } = useCurrencyConfig()
   const tokenStatus = usePaymentTokenStatus(paymentUploadToken, verifyToken)
-  const { mutateAsync, isPending, isError, error } = useUploadYapeProof()
+  const { mutateAsync, isPending, isError, error } = useUploadPaymentProof()
   const activateFree = useActivateFreePlan()
   const promo = usePromoCode(plan, billingCycle)
 

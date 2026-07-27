@@ -38,7 +38,7 @@ interface Props {
 /**
  * El paso de pago manual, común al registro y al upgrade/renovación.
  *
- * Antes vivía duplicado en `YapePaymentStep` y `YapeUpgradeStep` —dos copias de ~200
+ * Antes vivía duplicado en `PaymentStep` y `UpgradePaymentStep` —dos copias de ~200
  * líneas de marcado que había que mantener en paralelo—. Lo que cambia entre los dos
  * caminos es la orquestación (token de pago, mutación, rótulos), no la pantalla, así
  * que la pantalla vive aquí y los pasos le pasan lo suyo.

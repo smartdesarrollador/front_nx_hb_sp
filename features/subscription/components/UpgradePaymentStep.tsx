@@ -1,6 +1,6 @@
 'use client'
 
-import { useYapeUpgrade } from '../hooks/useYapeUpgrade'
+import { useUpgradePayment } from '../hooks/useUpgradePayment'
 import type { BillingCycle } from '../types'
 import { ManualPaymentStep } from '@/features/payments/components/ManualPaymentStep'
 import { extractPromoRejection, usePromoCode } from '@/features/payments/hooks/usePromoCode'
@@ -21,14 +21,14 @@ interface Props {
  * `ManualPaymentStep`; aquí solo vive lo propio de este camino: la mutación autenticada
  * y los rótulos de renovación.
  */
-export default function YapeUpgradeStep({
+export default function UpgradePaymentStep({
   plan, priceMonthly, priceAnnual, billingCycle, isRenewal, onSuccess,
 }: Props) {
-  const { mutateAsync, isPending, isError, error } = useYapeUpgrade()
+  const { mutateAsync, isPending, isError, error } = useUpgradePayment()
   const promo = usePromoCode(plan, billingCycle)
 
   // El precio base es el del ciclo elegido. El backend lo recalcula igual
-  // (yape_upgrade_views.py nunca confía en el monto del cliente); esto solo garantiza
+  // (plan_upgrade_views.py nunca confía en el monto del cliente); esto solo garantiza
   // que el importe mostrado coincida con el que se va a cobrar.
   const isAnnual = billingCycle === 'annual' && priceAnnual > 0
   const basePrice = isAnnual ? priceAnnual : priceMonthly

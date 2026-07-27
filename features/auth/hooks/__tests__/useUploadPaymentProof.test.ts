@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { act, waitFor } from '@testing-library/react'
 import { publicClient } from '@/lib/axios'
 import { renderHookWithProviders } from '@/test/utils'
-import { useUploadYapeProof } from '@/features/auth/hooks/useUploadYapeProof'
+import { useUploadPaymentProof } from '@/features/auth/hooks/useUploadPaymentProof'
 
 // Nota: no se usa MSW aquí — el adapter http de axios (forzado en test/setup.ts
 // para que MSW intercepte) no serializa el FormData de jsdom
@@ -17,13 +17,13 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('useUploadYapeProof', () => {
+describe('useUploadPaymentProof', () => {
   it('incluye promo_code en el FormData y nunca envía amount', async () => {
     const postSpy = vi.spyOn(publicClient, 'post').mockResolvedValue({
       data: { message: 'ok', proof_id: 'p1' },
     })
 
-    const { result } = renderHookWithProviders(() => useUploadYapeProof())
+    const { result } = renderHookWithProviders(() => useUploadPaymentProof())
     await act(async () => {
       result.current.mutate({
         payment_upload_token: 'tok-123',
@@ -35,7 +35,7 @@ describe('useUploadYapeProof', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
     expect(postSpy).toHaveBeenCalledWith(
-      '/auth/yape-payment-proof',
+      '/auth/payment-proof',
       expect.any(FormData),
       { headers: { 'Content-Type': undefined } },
     )
@@ -52,7 +52,7 @@ describe('useUploadYapeProof', () => {
       data: { message: 'ok', proof_id: 'p2' },
     })
 
-    const { result } = renderHookWithProviders(() => useUploadYapeProof())
+    const { result } = renderHookWithProviders(() => useUploadPaymentProof())
     await act(async () => {
       result.current.mutate({
         payment_upload_token: 'tok-456',
@@ -72,7 +72,7 @@ describe('useUploadYapeProof', () => {
       data: { message: 'ok', proof_id: 'p3', billing_cycle: 'annual' },
     })
 
-    const { result } = renderHookWithProviders(() => useUploadYapeProof())
+    const { result } = renderHookWithProviders(() => useUploadPaymentProof())
     await act(async () => {
       result.current.mutate({
         payment_upload_token: 'tok-annual',
@@ -95,7 +95,7 @@ describe('useUploadYapeProof', () => {
       data: { message: 'ok', proof_id: 'p4', billing_cycle: 'monthly' },
     })
 
-    const { result } = renderHookWithProviders(() => useUploadYapeProof())
+    const { result } = renderHookWithProviders(() => useUploadPaymentProof())
     await act(async () => {
       result.current.mutate({
         payment_upload_token: 'tok-default',

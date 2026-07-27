@@ -9,7 +9,7 @@ import { z } from 'zod'
 import { AlertCircle, Check, Clock } from 'lucide-react'
 import AuthLayout from '@/features/auth/components/AuthLayout'
 import GoogleOAuthButton from '@/features/auth/components/GoogleOAuthButton'
-import YapePaymentStep from '@/features/auth/components/YapePaymentStep'
+import PaymentStep from '@/features/auth/components/PaymentStep'
 import { useRegister } from '@/features/auth/hooks/useRegister'
 import {
   clearRegisterPaymentSession,
@@ -104,7 +104,7 @@ export default function RegisterPageClient() {
   const [formData, setFormData] = useState({ email: '', password: '', organizationName: '' })
   const [registerError, setRegisterError]     = useState<string | null>(null)
   // Se llegó al paso de pago rehidratando, no completando el wizard: solo en ese caso
-  // hay que comprobar si el token sigue vivo (ver YapePaymentStep).
+  // hay que comprobar si el token sigue vivo (ver PaymentStep).
   const [restoredPayment, setRestoredPayment] = useState(false)
 
   // Rehidratación tras un refresco o un back. Va en un efecto de montaje y no en el
@@ -452,9 +452,9 @@ export default function RegisterPageClient() {
         </div>
       )}
 
-      {/* Step 4a — Yape payment (paid plans) */}
+      {/* Step 4a — pago manual (planes de pago) */}
       {step === 4 && requiresPayment && paymentUploadToken && (
-        <YapePaymentStep
+        <PaymentStep
           paymentUploadToken={paymentUploadToken}
           plan={selectedPlan}
           billingCycle={billingCycle}

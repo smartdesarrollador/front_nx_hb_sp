@@ -4,8 +4,8 @@ import { apiClient } from '@/lib/axios'
 import { renderHookWithProviders } from '@/test/utils'
 import {
   PENDING_PROOF_MESSAGE,
-  useYapeUpgrade,
-} from '@/features/subscription/hooks/useYapeUpgrade'
+  useUpgradePayment,
+} from '@/features/subscription/hooks/useUpgradePayment'
 
 // Nota: no se usa MSW aquí — el adapter http de axios (forzado en test/setup.ts
 // para que MSW intercepte) no serializa el FormData de jsdom
@@ -20,13 +20,13 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('useYapeUpgrade', () => {
+describe('useUpgradePayment', () => {
   it('incluye promo_code en el FormData y nunca envía amount', async () => {
     const postSpy = vi.spyOn(apiClient, 'post').mockResolvedValue({
       data: { message: 'ok', proof_id: 'p1' },
     })
 
-    const { result } = renderHookWithProviders(() => useYapeUpgrade())
+    const { result } = renderHookWithProviders(() => useUpgradePayment())
     await act(async () => {
       result.current.mutate({
         plan: 'professional',
@@ -38,9 +38,9 @@ describe('useYapeUpgrade', () => {
 
     // Con trailing slash: en producción NEXT_PUBLIC_API_URL apunta directo al
     // backend (sin pasar por el rewrite de next.config.ts), así que debe
-    // coincidir exacto con el path de Django (`yape-upgrade/`) — ver LL-001.
+    // coincidir exacto con el path de Django (`plan-upgrade/`) — ver LL-001.
     expect(postSpy).toHaveBeenCalledWith(
-      '/admin/subscriptions/yape-upgrade/',
+      '/admin/subscriptions/plan-upgrade/',
       expect.any(FormData),
       { headers: { 'Content-Type': undefined } },
     )
@@ -56,7 +56,7 @@ describe('useYapeUpgrade', () => {
       data: { message: 'ok', proof_id: 'p2' },
     })
 
-    const { result } = renderHookWithProviders(() => useYapeUpgrade())
+    const { result } = renderHookWithProviders(() => useUpgradePayment())
     await act(async () => {
       result.current.mutate({
         plan: 'enterprise',
@@ -75,7 +75,7 @@ describe('useYapeUpgrade', () => {
       data: { message: 'ok', proof_id: 'p3', is_renewal: true, billing_cycle: 'annual' },
     })
 
-    const { result } = renderHookWithProviders(() => useYapeUpgrade())
+    const { result } = renderHookWithProviders(() => useUpgradePayment())
     await act(async () => {
       result.current.mutate({
         plan: 'professional',
@@ -97,7 +97,7 @@ describe('useYapeUpgrade', () => {
       data: { message: 'ok', proof_id: 'p4', is_renewal: false, billing_cycle: 'monthly' },
     })
 
-    const { result } = renderHookWithProviders(() => useYapeUpgrade())
+    const { result } = renderHookWithProviders(() => useUpgradePayment())
     await act(async () => {
       result.current.mutate({ plan: 'starter', screenshot: makeScreenshot() })
     })
@@ -113,7 +113,7 @@ describe('useYapeUpgrade', () => {
       response: { status: 409, data: { detail: 'Ya tienes un comprobante en revisión.' } },
     })
 
-    const { result } = renderHookWithProviders(() => useYapeUpgrade())
+    const { result } = renderHookWithProviders(() => useUpgradePayment())
     await act(async () => {
       result.current.mutate({ plan: 'professional', screenshot: makeScreenshot() })
     })
@@ -126,7 +126,7 @@ describe('useYapeUpgrade', () => {
     const original = { response: { status: 400, data: { detail: 'Plan inválido.' } } }
     vi.spyOn(apiClient, 'post').mockRejectedValue(original)
 
-    const { result } = renderHookWithProviders(() => useYapeUpgrade())
+    const { result } = renderHookWithProviders(() => useUpgradePayment())
     await act(async () => {
       result.current.mutate({ plan: 'professional', screenshot: makeScreenshot() })
     })
