@@ -8,6 +8,10 @@ import type { BillingCycle } from '../types'
 interface YapeUpgradeRequest {
   plan: string
   screenshot: File
+  /** Método elegido. El backend lo valida contra los habilitados; default: yape. */
+  method?: string
+  /** ID de la transacción; obligatorio en los métodos que lo emiten (PayPal). */
+  transaction_reference?: string
   promo_code?: string
   billing_cycle?: BillingCycle
 }
@@ -29,6 +33,12 @@ async function submitYapeUpgrade(data: YapeUpgradeRequest): Promise<YapeUpgradeR
   const form = new FormData()
   form.append('plan', data.plan)
   form.append('screenshot', data.screenshot)
+  if (data.method) {
+    form.append('method', data.method)
+  }
+  if (data.transaction_reference) {
+    form.append('transaction_reference', data.transaction_reference)
+  }
   if (data.promo_code) {
     form.append('promo_code', data.promo_code)
   }

@@ -9,6 +9,10 @@ interface UploadYapeProofRequest {
   payment_upload_token: string
   screenshot: File
   plan: string
+  /** Método elegido. El backend lo valida contra los habilitados; default: yape. */
+  method?: string
+  /** ID de la transacción; obligatorio en los métodos que lo emiten (PayPal). */
+  transaction_reference?: string
   promo_code?: string
   /** Determina precio y duración del período (30 vs. 365 d). Default del backend: monthly. */
   billing_cycle?: BillingCycle
@@ -27,6 +31,12 @@ async function uploadYapeProof(data: UploadYapeProofRequest): Promise<UploadYape
   form.append('payment_upload_token', data.payment_upload_token)
   form.append('screenshot', data.screenshot)
   form.append('plan', data.plan)
+  if (data.method) {
+    form.append('method', data.method)
+  }
+  if (data.transaction_reference) {
+    form.append('transaction_reference', data.transaction_reference)
+  }
   if (data.promo_code) {
     form.append('promo_code', data.promo_code)
   }

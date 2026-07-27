@@ -10,16 +10,20 @@ vi.mock('@/features/subscription/hooks/useYapeUpgrade', () => ({
   PENDING_PROOF_MESSAGE: 'pending',
 }))
 
-vi.mock('@/features/auth/hooks/useYapeConfig', () => ({
-  useYapeConfig: () => ({
-    data: {
-      is_enabled: true,
-      phone: '999888777',
-      holder_name: 'Titular Test',
-      instructions_note: '',
+// Los métodos de pago ya no salen de la config de Yape sino del catálogo público:
+// la fila `yape` llega ahí con su `charge_currency`.
+const methods = vi.hoisted(() => ({
+  list: [
+    {
+      method: 'yape', display_name: 'Yape', charge_currency: 'PEN' as const,
+      requires_reference: false, phone: '999888777', holder_name: 'Titular',
+      checkout_url: '', account_email: '', instructions_note: '',
     },
-    isLoading: false,
-  }),
+  ],
+}))
+
+vi.mock('@/features/payments/hooks/usePaymentMethods', () => ({
+  usePaymentMethods: () => ({ methods: methods.list, isLoading: false, isError: false }),
 }))
 
 // El tipo de cambio ya no sale de la config de Yape sino de /public/currency/.

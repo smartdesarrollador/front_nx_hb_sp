@@ -1,24 +1,17 @@
 'use client'
 
-import { useRef, useState } from 'react'
-import { Upload, X, AlertCircle, Smartphone, Tag, Loader2, PartyPopper } from 'lucide-react'
+import { PartyPopper } from 'lucide-react'
 import { useUploadYapeProof } from '@/features/auth/hooks/useUploadYapeProof'
-import { useYapeConfig } from '@/features/auth/hooks/useYapeConfig'
 import { usePaymentTokenStatus } from '@/features/auth/hooks/usePaymentTokenStatus'
 import { useActivateFreePlan } from '@/features/auth/hooks/useActivateFreePlan'
-import {
-  PROMO_REASON_MESSAGES,
-  useValidatePromotion,
-  type PromoReason,
-  type PromoValidationResult,
-} from '@/features/auth/hooks/useValidatePromotion'
 import { usePlans } from '@/features/subscription/hooks/usePlans'
 import BillingCycleToggle from '@/features/subscription/components/BillingCycleToggle'
 import { annualDiscountPercent } from '@/features/subscription/plans-data'
 import type { BillingCycle } from '@/features/subscription/types'
+import { ManualPaymentStep } from '@/features/payments/components/ManualPaymentStep'
+import { extractPromoRejection, usePromoCode } from '@/features/payments/hooks/usePromoCode'
+import type { ProofSubmission } from '@/features/payments/types'
 import { useCurrencyConfig } from '@/hooks/useCurrencyConfig'
-import { useDisplayCurrency } from '@/hooks/useDisplayCurrency'
-import { AMOUNT_DECIMALS, formatMoney } from '@/lib/currency'
 
 interface Props {
   paymentUploadToken: string
@@ -43,99 +36,31 @@ interface Props {
   onActivated: () => void
 }
 
-function promoMessage(reason: string | undefined): string {
-  return PROMO_REASON_MESSAGES[reason as PromoReason] ?? 'El código no es válido.'
-}
-
+/**
+ * Pago manual durante el registro. La pantalla es `ManualPaymentStep`; aquí vive lo
+ * propio de este camino: el token de subida, el toggle de ciclo (que obliga a revalidar
+ * el cupón) y la activación directa cuando un cupón cubre el 100%.
+ */
 export default function YapePaymentStep({
   paymentUploadToken, plan, billingCycle = 'monthly', onBillingCycleChange,
   verifyToken = false, onSuccess, onActivated,
 }: Props) {
-  const [file, setFile]         = useState<File | null>(null)
-  const [preview, setPreview]   = useState<string | null>(null)
-  const [dragOver, setDragOver] = useState(false)
-  const inputRef                = useRef<HTMLInputElement>(null)
-
-  const [showPromo, setShowPromo]   = useState(false)
-  const [promoInput, setPromoInput] = useState('')
-  const [applied, setApplied]       = useState<PromoValidationResult | null>(null)
-  const [promoError, setPromoError] = useState<string | null>(null)
-
-  const { data: yapeConfig, isLoading: configLoading } = useYapeConfig()
-  const { isLoading: rateLoading } = useCurrencyConfig()
-  const money = useDisplayCurrency()
   const { plans, isLoading: plansLoading } = usePlans()
+  const { isLoading: rateLoading } = useCurrencyConfig()
   const tokenStatus = usePaymentTokenStatus(paymentUploadToken, verifyToken)
   const { mutateAsync, isPending, isError, error } = useUploadYapeProof()
-  const validatePromo = useValidatePromotion()
-  const activateFree  = useActivateFreePlan()
+  const activateFree = useActivateFreePlan()
+  const promo = usePromoCode(plan, billingCycle)
 
   // Precio real del plan (modelo Plan del backend) — nunca hardcodeado. El backend
   // recalcula el monto de todos modos; esto solo garantiza que lo mostrado coincida
   // con lo que se va a cobrar.
-  const planData   = plans.find((p) => p.id === plan)
-  const isAnnual   = billingCycle === 'annual' && (planData?.priceAnnual ?? 0) > 0
-  const planPrice  = (isAnnual ? planData?.priceAnnual : planData?.priceMonthly) ?? 0
-  const periodLabel = isAnnual ? 'año' : 'mes'
+  const planData = plans.find((p) => p.id === plan)
+  const isAnnual = billingCycle === 'annual' && (planData?.priceAnnual ?? 0) > 0
+  const basePrice = (isAnnual ? planData?.priceAnnual : planData?.priceMonthly) ?? 0
   // `null` cuando el plan no tiene ahorro anual → sin toggle que ofrecer.
   const cycleDiscount = planData ? annualDiscountPercent(planData) : null
-  const amountUSD = applied?.final_price ?? planPrice
-  // El PEN es el importe exacto que se va a transferir, así que no sigue el switch de
-  // moneda: aquí siempre se muestran las dos. Con cupón manda el `final_price_pen`
-  // que calculó el backend — es el que espera ver en el comprobante.
-  // `null` si no hay tipo de cambio: antes un `?? '3.75'` pintaba un importe
-  // plausible y equivocado.
-  const amountPEN = applied?.final_price_pen != null
-    ? formatMoney(applied.final_price_pen, 'PEN', AMOUNT_DECIMALS)
-    : money.inCurrency(amountUSD, 'PEN', AMOUNT_DECIMALS)
-  const isFreeWithPromo = applied !== null && applied.final_price === 0
-
-  const isLoadingData = configLoading || plansLoading || rateLoading
-
-  function handleFile(f: File) {
-    if (!f.type.startsWith('image/')) return
-    if (preview) URL.revokeObjectURL(preview)
-    setFile(f)
-    setPreview(URL.createObjectURL(f))
-  }
-
-  function removeFile(e: React.MouseEvent) {
-    e.stopPropagation()
-    if (preview) URL.revokeObjectURL(preview)
-    setFile(null)
-    setPreview(null)
-  }
-
-  function handleDrop(e: React.DragEvent) {
-    e.preventDefault()
-    setDragOver(false)
-    const f = e.dataTransfer.files[0]
-    if (f) handleFile(f)
-  }
-
-  async function handleApplyPromo() {
-    const code = promoInput.trim().toUpperCase()
-    if (!code) return
-    setPromoError(null)
-    try {
-      const result = await validatePromo.mutateAsync({ code, plan, billing_cycle: billingCycle })
-      if (result.valid) {
-        setApplied(result)
-      } else {
-        setApplied(null)
-        setPromoError(promoMessage(result.reason))
-      }
-    } catch {
-      setApplied(null)
-      setPromoError('No se pudo validar el código. Intenta de nuevo.')
-    }
-  }
-
-  function handleRemovePromo() {
-    setApplied(null)
-    setPromoInput('')
-    setPromoError(null)
-  }
+  const isFreeWithPromo = promo.applied !== null && promo.applied.final_price === 0
 
   /**
    * Cambiar de ciclo obliga a revalidar el cupón: su descuento se calculó contra el
@@ -149,46 +74,19 @@ export default function YapePaymentStep({
   async function handleCycleChange(cycle: BillingCycle) {
     if (cycle === billingCycle) return
     onBillingCycleChange?.(cycle)
-
-    const code = applied?.code
-    if (!code) return
-
-    setPromoError(null)
-    try {
-      const result = await validatePromo.mutateAsync({ code, plan, billing_cycle: cycle })
-      if (result.valid) {
-        // Un porcentaje sigue valiendo y se recalcula solo; un monto fijo que cubría el
-        // mensual puede dejar de cubrir el anual y pasar a ser un descuento parcial.
-        setApplied(result)
-      } else {
-        setApplied(null)
-        setPromoError(
-          `El cupón ${code} no aplica al plan ${cycle === 'annual' ? 'anual' : 'mensual'}. ` +
-          promoMessage(result.reason),
-        )
-      }
-    } catch {
-      setApplied(null)
-      setPromoError('No se pudo revalidar el código con el ciclo nuevo. Vuelve a aplicarlo.')
-    }
+    await promo.revalidate(cycle)
   }
 
-  function extractPromoRejection(err: unknown): string | null {
-    const data = (err as { response?: { data?: { promo_reason?: string; detail?: string } } })
-      .response?.data
-    if (!data?.promo_reason) return null
-    return data.detail ?? promoMessage(data.promo_reason)
-  }
-
-  async function handleSubmit() {
-    if (!file) return
+  async function handleSubmit({ file, method, transactionReference, promoCode }: ProofSubmission) {
     try {
       await mutateAsync({
         payment_upload_token: paymentUploadToken,
         screenshot: file,
+        method,
         plan,
         billing_cycle: billingCycle,
-        ...(applied?.code ? { promo_code: applied.code } : {}),
+        ...(transactionReference ? { transaction_reference: transactionReference } : {}),
+        ...(promoCode ? { promo_code: promoCode } : {}),
       })
       onSuccess()
     } catch (err) {
@@ -196,27 +94,26 @@ export default function YapePaymentStep({
       // el token sigue vivo — se quita el cupón y el usuario puede reintentar.
       const rejection = extractPromoRejection(err)
       if (rejection) {
-        setApplied(null)
-        setPromoError(`${rejection} Puedes reintentar sin el cupón.`)
+        promo.reject(`${rejection} Puedes reintentar sin el cupón.`)
       }
     }
   }
 
   async function handleActivateFree() {
-    if (!applied?.code) return
-    setPromoError(null)
+    const code = promo.applied?.code
+    if (!code) return
+    promo.setError(null)
     try {
       await activateFree.mutateAsync({
         payment_upload_token: paymentUploadToken,
         plan,
-        promo_code: applied.code,
+        promo_code: code,
         billing_cycle: billingCycle,
       })
       onActivated()
     } catch (err) {
       const rejection = extractPromoRejection(err)
-      setApplied(null)
-      setPromoError(rejection ?? 'No se pudo activar la cuenta. Intenta de nuevo.')
+      promo.reject(rejection ?? 'No se pudo activar la cuenta. Intenta de nuevo.')
     }
   }
 
@@ -250,311 +147,59 @@ export default function YapePaymentStep({
     )
   }
 
-  // Yape disabled by admin
-  if (!configLoading && yapeConfig && !yapeConfig.is_enabled) {
-    return (
-      <div className="space-y-4">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Pago con Yape</h2>
-        <div className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 p-4 text-sm text-amber-800 dark:text-amber-300">
-          <p className="font-medium mb-1">Pago con Yape no disponible temporalmente</p>
-          <p>Por favor contáctanos para coordinar el pago de tu suscripción.</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="space-y-5">
-      <div>
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-          Pago con Yape
-        </h2>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Realiza el pago y sube el comprobante para activar tu cuenta.
-        </p>
-      </div>
-
-      {/* Aquí ya no se puede retroceder (la cuenta está creada), pero el ciclo sigue
-          siendo editable: no se fija hasta que se envía el comprobante. Se oculta si el
-          plan no tiene precio anual — no se ofrece una elección sin efecto. */}
-      {onBillingCycleChange && cycleDiscount !== null && (
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <span className="text-sm text-gray-500 dark:text-gray-400">
-            ¿Prefieres otro ciclo?
-          </span>
-          <div className={validatePromo.isPending ? 'pointer-events-none opacity-60' : ''}>
-            <BillingCycleToggle
-              value={billingCycle}
-              onChange={handleCycleChange}
-              discountPercent={cycleDiscount}
-            />
+    <ManualPaymentStep
+      title="Pago de tu suscripción"
+      subtitle="Realiza el pago y sube el comprobante para activar tu cuenta."
+      plan={plan}
+      basePrice={basePrice}
+      isAnnual={isAnnual}
+      promo={promo}
+      isSubmitting={isPending}
+      isLoadingExtra={plansLoading || rateLoading}
+      errorMessage={
+        isError && !extractPromoRejection(error)
+          ? (error as Error)?.message ?? 'Error al enviar el comprobante. Intenta de nuevo.'
+          : null
+      }
+      onSubmit={handleSubmit}
+      headerSlot={
+        /* Aquí ya no se puede retroceder (la cuenta está creada), pero el ciclo sigue
+           siendo editable: no se fija hasta que se envía el comprobante. Se oculta si el
+           plan no tiene precio anual — no se ofrece una elección sin efecto. */
+        onBillingCycleChange && cycleDiscount !== null ? (
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              ¿Prefieres otro ciclo?
+            </span>
+            <div className={promo.isValidating ? 'pointer-events-none opacity-60' : ''}>
+              <BillingCycleToggle
+                value={billingCycle}
+                onChange={handleCycleChange}
+                discountPercent={cycleDiscount}
+              />
+            </div>
           </div>
-        </div>
-      )}
-
-      {/* Payment instructions */}
-      <div className="rounded-xl border border-purple-200 bg-purple-50 dark:border-purple-800 dark:bg-purple-900/20 p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <Smartphone className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
-          <p className="text-sm font-semibold text-purple-900 dark:text-purple-200">
-            Instrucciones de pago
-          </p>
-        </div>
-
-        {isLoadingData ? (
-          <div className="space-y-2 animate-pulse">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-4 bg-purple-200 dark:bg-purple-800 rounded w-3/4" />
-            ))}
-          </div>
-        ) : isFreeWithPromo ? (
-          <p className="text-sm text-purple-800 dark:text-purple-300">
-            Tu cupón cubre el <span className="font-bold">100% del plan</span> — no necesitas
-            realizar ningún pago.
-          </p>
-        ) : (
-          <ol className="pl-4 space-y-1.5 text-sm text-purple-800 dark:text-purple-300 list-decimal">
-            <li>Abre Yape en tu celular</li>
-            <li>
-              {amountPEN ? (
-                <>
-                  Envía{' '}
-                  <span className="font-bold text-purple-900 dark:text-purple-100">
-                    {amountPEN}
-                  </span>{' '}
-                  (aprox. ${amountUSD.toFixed(2)} USD) al número:
-                </>
-              ) : (
-                <>
-                  Envía{' '}
-                  <span className="font-bold text-purple-900 dark:text-purple-100">
-                    ${amountUSD.toFixed(2)} USD
-                  </span>{' '}
-                  al número:{' '}
-                  <span className="block text-xs mt-1 opacity-80">
-                    No pudimos calcular el importe en soles; usa el tipo de cambio de tu banco.
-                  </span>
-                </>
-              )}
-            </li>
-            <li className="font-mono font-bold text-base tracking-wider text-purple-900 dark:text-purple-100">
-              {yapeConfig?.phone || '—'}
-            </li>
-            <li>
-              Titular:{' '}
-              <span className="font-semibold text-purple-900 dark:text-purple-100">
-                {yapeConfig?.holder_name || '—'}
-              </span>
-            </li>
-            <li>Toma screenshot del comprobante y súbelo abajo</li>
-          </ol>
-        )}
-
-        {yapeConfig?.instructions_note && !isFreeWithPromo && (
-          <p className="text-xs text-purple-700 dark:text-purple-300 pt-2 border-t border-purple-200 dark:border-purple-700">
-            {yapeConfig.instructions_note}
-          </p>
-        )}
-
-        <p className="text-xs text-purple-600 dark:text-purple-400 pt-1 border-t border-purple-200 dark:border-purple-700">
-          Plan seleccionado:{' '}
-          <span className="font-semibold capitalize">{plan}</span>
-          {' · '}
-          <span className="font-semibold">{isAnnual ? 'anual' : 'mensual'}</span>
-          {!plansLoading && (
-            applied ? (
-              <>
-                {' — '}
-                <span className="line-through opacity-60">${applied.original_price?.toFixed(2)}</span>{' '}
-                <span className="font-semibold">${amountUSD.toFixed(2)}/{periodLabel}</span>
-              </>
-            ) : (
-              <> — ${planPrice}/{periodLabel}</>
-            )
-          )}
-        </p>
-      </div>
-
-      {/* Discount code */}
-      <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-3">
-        {!applied ? (
+        ) : null
+      }
+      footerSlot={
+        isFreeWithPromo ? (
           <>
             <button
               type="button"
-              onClick={() => setShowPromo((v) => !v)}
-              className="flex items-center gap-2 text-sm font-medium text-purple-600 dark:text-purple-400 hover:text-purple-700"
+              onClick={handleActivateFree}
+              disabled={activateFree.isPending}
+              className="w-full flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <Tag className="w-4 h-4" />
-              ¿Tienes un código de descuento?
+              <PartyPopper className="w-4 h-4" />
+              {activateFree.isPending ? 'Activando cuenta...' : 'Activar mi cuenta'}
             </button>
-
-            {showPromo && (
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={promoInput}
-                  onChange={(e) => {
-                    setPromoInput(e.target.value.toUpperCase())
-                    setPromoError(null)
-                  }}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleApplyPromo() }}
-                  placeholder="CODIGO"
-                  className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm font-mono uppercase tracking-wider dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-                <button
-                  type="button"
-                  onClick={handleApplyPromo}
-                  disabled={!promoInput.trim() || validatePromo.isPending}
-                  className="flex items-center gap-1.5 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {validatePromo.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  Aplicar
-                </button>
-              </div>
-            )}
+            <p className="text-center text-xs text-gray-400">
+              Tu cuenta se activará de inmediato, sin pago ni comprobante.
+            </p>
           </>
-        ) : (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Tag className="w-4 h-4 text-green-600 dark:text-green-400" />
-                <span className="font-mono text-sm font-bold text-gray-900 dark:text-white">
-                  {applied.code}
-                </span>
-                <span className="rounded bg-green-100 px-1.5 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                  aplicado
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={handleRemovePromo}
-                className="text-xs text-gray-500 hover:text-red-600 dark:text-gray-400"
-              >
-                Quitar
-              </button>
-            </div>
-            <div className="text-sm space-y-0.5">
-              <p className="text-gray-500 dark:text-gray-400">
-                Plan: <span className="line-through">${applied.original_price?.toFixed(2)}</span>
-              </p>
-              <p className="text-green-600 dark:text-green-400">
-                Descuento: −${applied.discount_amount?.toFixed(2)}
-              </p>
-              <p className="font-semibold text-gray-900 dark:text-white">
-                Total: ${applied.final_price?.toFixed(2)} USD
-                {!isFreeWithPromo && (
-                  <span className="font-normal text-gray-500 dark:text-gray-400">
-                    {amountPEN && <>{' '}({amountPEN})</>}
-                  </span>
-                )}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {promoError && (
-          <div className="flex items-start gap-2 rounded-lg bg-red-50 dark:bg-red-900/20 p-2.5 text-xs text-red-700 dark:text-red-300">
-            <AlertCircle className="mt-0.5 w-3.5 h-3.5 flex-shrink-0" />
-            <span>{promoError}</span>
-          </div>
-        )}
-      </div>
-
-      {isFreeWithPromo ? (
-        <>
-          <button
-            type="button"
-            onClick={handleActivateFree}
-            disabled={activateFree.isPending}
-            className="w-full flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <PartyPopper className="w-4 h-4" />
-            {activateFree.isPending ? 'Activando cuenta...' : 'Activar mi cuenta'}
-          </button>
-          <p className="text-center text-xs text-gray-400">
-            Tu cuenta se activará de inmediato, sin pago ni comprobante.
-          </p>
-        </>
-      ) : (
-        <>
-          {/* Drop zone */}
-          <div
-            onDrop={handleDrop}
-            onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-            onDragLeave={() => setDragOver(false)}
-            onClick={() => !file && inputRef.current?.click()}
-            className={[
-              'relative rounded-xl border-2 border-dashed p-6 text-center transition-colors',
-              !file ? 'cursor-pointer' : '',
-              dragOver
-                ? 'border-purple-400 bg-purple-50 dark:bg-purple-900/20'
-                : 'border-gray-300 dark:border-gray-600 hover:border-purple-300 dark:hover:border-purple-600',
-            ].join(' ')}
-          >
-            <input
-              ref={inputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0]
-                if (f) handleFile(f)
-              }}
-            />
-
-            {preview ? (
-              <div className="relative inline-block">
-                <img
-                  src={preview}
-                  alt="Vista previa del comprobante"
-                  className="max-h-52 rounded-lg object-contain"
-                />
-                <button
-                  type="button"
-                  onClick={removeFile}
-                  aria-label="Quitar imagen"
-                  className="absolute -top-2 -right-2 rounded-full bg-white dark:bg-gray-800 p-1 shadow-md border border-gray-200 dark:border-gray-600"
-                >
-                  <X className="w-3.5 h-3.5 text-gray-600 dark:text-gray-300" />
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <Upload className="mx-auto w-10 h-10 text-gray-400" />
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Arrastra tu screenshot aquí o{' '}
-                  <span className="font-medium text-purple-600 dark:text-purple-400">
-                    haz clic para seleccionar
-                  </span>
-                </p>
-                <p className="text-xs text-gray-400">PNG, JPG, WEBP (máx. 10 MB)</p>
-              </div>
-            )}
-          </div>
-
-          {isError && !extractPromoRejection(error) && (
-            <div className="flex items-start gap-2 rounded-lg bg-red-50 dark:bg-red-900/20 p-3 text-sm text-red-700 dark:text-red-300">
-              <AlertCircle className="mt-0.5 w-4 h-4 flex-shrink-0" />
-              <span>
-                {(error as Error)?.message ?? 'Error al enviar el comprobante. Intenta de nuevo.'}
-              </span>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={!file || isPending}
-            className="w-full rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isPending ? 'Enviando comprobante...' : 'Enviar comprobante'}
-          </button>
-
-          <p className="text-center text-xs text-gray-400">
-            Tu comprobante será revisado manualmente. Recibirás un email de confirmación.
-          </p>
-        </>
-      )}
-    </div>
+        ) : null
+      }
+    />
   )
 }
